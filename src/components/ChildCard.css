@@ -1,0 +1,33 @@
+.child-card {
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 20px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(120deg, rgba(99, 102, 241, 0.05), #fff);
+}
+
+.child-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.child-input-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+}
+
+.remove-button {
+  background: none;
+  border: 0;
+  color: #ef4444;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+}
+.remove-button:disabled {
+  color: #cbd5f5;
+  cursor: not-allowed;
+}
