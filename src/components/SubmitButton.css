@@ -1,0 +1,38 @@
+.submit-button {
+  /* base color */
+  background: var(--btn-color);
+  color: #fff;
+
+  border: 0;
+  border-radius: 16px;
+  padding: 0.9rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  /* shadow derived from color */
+  box-shadow: 0 15px 30px
+    color-mix(in srgb, var(--btn-color) 35%, transparent);
+
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+
+.submit-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px
+    color-mix(in srgb, var(--btn-color) 45%, transparent);
+
+  /* subtle brightness boost */
+  filter: brightness(1.05);
+}
+
+.submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
