@@ -5,6 +5,7 @@ import type { Child } from '../types/child';
 import ChildCard from './ChildCard';
 import DashedButton from './DashedButton';
 import SubmitButton from './SubmitButton';
+import ExcelTool from './ExcelTool';
 
 function createEmptyChild(): Child {
   return {
@@ -92,6 +93,11 @@ function SignUpForm() {
             <header>
               <h2>Athlet/Innen</h2>
             </header>
+
+            <ExcelTool
+                onImport={(importedChildren) => {setChildren(importedChildren);}}/>
+
+
             {children.map((child, index) => (
               <ChildCard
                 key={child.id}
