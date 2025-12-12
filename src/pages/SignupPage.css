@@ -1,11 +1,14 @@
 .title {
-    margin-top: 2rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     text-align: center;
+    margin-top: 2rem;
     margin-bottom: 3rem;
+    margin-left: clamp(1rem, 5vw, 10rem);
+    margin-right: clamp(1rem, 5vw, 10rem);
+
 }
 
 .tags {
