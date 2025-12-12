@@ -4,9 +4,23 @@
   padding: 2rem 2rem;
   box-shadow: 0 25px 65px rgba(15, 23, 42, 0.08);
   border: 1px solid rgba(15, 23, 42, 0.05);
-  margin-right: 2rem;
-  margin-left: 2rem;
+  margin-left: clamp(1rem, 5vw, 10rem);
+  margin-right: clamp(1rem, 5vw, 10rem);
+  margin-bottom: 2rem;
   width: 100%;
+  max-width: 1400px;
+}
+
+section {
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  padding-top: 1.75rem;
+  margin-top: 1.75rem;
+}
+
+section:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 0;
 }
 
 .input-grid{
@@ -14,3 +28,7 @@
     gap: 1rem;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
+
+.add-child-box {
+  text-align: center;
+} 
