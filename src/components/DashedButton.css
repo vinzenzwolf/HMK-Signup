@@ -1,0 +1,20 @@
+.dashed-button {
+  border: 1px dashed color-mix(in srgb, var(--btn-color) 50%, transparent);
+  color: var(--btn-color);
+  background: color-mix(in srgb, var(--btn-color) 8%, transparent);
+  border-radius: 16px;
+  padding: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.dashed-button:hover {
+  background: color-mix(in srgb, var(--btn-color) 15%, transparent);
+  border-color: var(--btn-color);
+}
+
+.dashed-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
