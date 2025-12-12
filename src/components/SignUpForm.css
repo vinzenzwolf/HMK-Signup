@@ -8,3 +8,9 @@
   margin-left: 2rem;
   width: 100%;
 }
+
+.input-grid{
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
