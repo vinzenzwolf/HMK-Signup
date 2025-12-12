@@ -1,0 +1,17 @@
+.formField {
+    display: flex;
+    flex-direction: column;
+}
+
+input,
+select,
+textarea {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  background: #f8fafc;
+  color: #0f172a;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
