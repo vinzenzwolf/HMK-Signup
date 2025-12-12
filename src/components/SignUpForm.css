@@ -1,0 +1,10 @@
+.signUpForm {
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 2rem 2rem;
+  box-shadow: 0 25px 65px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  margin-right: 2rem;
+  margin-left: 2rem;
+  width: 100%;
+}
