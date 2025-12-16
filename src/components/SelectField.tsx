@@ -2,6 +2,8 @@ import './FormField.css';
 import type { Gender } from '../types/child';
 
 type SelectFieldProps = {
+  id: string;
+  name: string;
   label: string;
   value: Gender;
   onChange: (value: Gender) => void;
@@ -10,6 +12,8 @@ type SelectFieldProps = {
 };
 
 function SelectField({
+  id,
+  name,
   label,
   value,
   onChange,
@@ -20,6 +24,8 @@ function SelectField({
     <label className="formField">
       <span>{label}</span>
       <select
+        id={id}
+        name={name}
         value={value}
         required={required}
         onChange={(e) => onChange(e.target.value as Gender)}
