@@ -27,3 +27,12 @@ textarea {
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
   box-sizing: border-box;
 }
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background-color: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+  opacity: 0.7;
+}

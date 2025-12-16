@@ -10,6 +10,7 @@ type FormFieldProps = {
   placeholder?: string;
   required?: boolean;
   error?: boolean;
+  disabled?: boolean;
 };
 
 function FormField({
@@ -22,6 +23,7 @@ function FormField({
   type = "text",
   required = true,
   error = false,
+  disabled = false,
 }: FormFieldProps) {
   return (
     <label className='formField'>
@@ -34,6 +36,7 @@ function FormField({
         onChange={onChange}
         placeholder={placeholder}
         required={required}
+        disabled={disabled}
         className={error ? "input-error" : ''}
       />
     </label>
