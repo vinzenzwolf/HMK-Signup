@@ -1,6 +1,8 @@
 import './FormField.css'
 
 type FormFieldProps = {
+  id: string;
+  name: string;
   label: string;
   value?: string;
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -11,6 +13,8 @@ type FormFieldProps = {
 };
 
 function FormField({
+  id,
+  name,
   label,
   placeholder = "",
   value,
@@ -23,6 +27,8 @@ function FormField({
     <label className='formField'>
       <span>{label}</span>
       <input
+        id = {id}
+        name = {name}
         type={type}
         value={value}
         onChange={onChange}
