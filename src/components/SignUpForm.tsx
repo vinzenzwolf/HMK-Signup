@@ -7,6 +7,20 @@ import DashedButton from './DashedButton';
 import SubmitButton from './SubmitButton';
 import ExcelTool from './ExcelTool';
 import InformationBanner from './InformationBanner';
+import { saveRegistration, updateRegistration, loadRegistrationByToken, mapChildToAthlete } from '../lib/database';
+
+type SignUpFormProps = {
+  initialData?: {
+    registrationId?: string
+    trainerName: string
+    verein: string
+    email: string
+    phoneNumber: string
+    children: Child[]
+  }
+  editToken?: string
+  onSaveSuccess?: () => void
+}
 
 function createEmptyChild(): Child {
   return {
@@ -18,11 +32,13 @@ function createEmptyChild(): Child {
   };
 }
 
-function SignUpForm() {
-  const [trainerName, setTrainerName] = useState("");
-  const [verein, setVerein] = useState("");
-  const [email, setEmail] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
+function SignUpForm({ initialData, editToken, onSaveSuccess }: SignUpFormProps = {}) {
+  const isEditMode = !!editToken
+  
+  const [trainerName, setTrainerName] = useState(initialData?.trainerName || "");
+  const [verein, setVerein] = useState(initialData?.verein || "");
+  const [email, setEmail] = useState(initialData?.email || "");
+  const [phoneNumber, setPhoneNumber] = useState(initialData?.phoneNumber || "");
   
   const [trainerErrors, setTrainerErrors] = useState({
     trainerName: false,
@@ -45,6 +61,7 @@ const [childErrors, setChildErrors] = useState<
 
   const [bannerMessage, setBannerMessage] = useState<string | null>(null);
   const [bannerVariant, setBannerVariant] = useState<'error' | 'info' | 'success'>('success');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   function isNonEmpty(value: string) {
     return value.trim().length > 0;
@@ -82,9 +99,11 @@ const [childErrors, setChildErrors] = useState<
   }
 
   //Children States and Logic
-  const [children, setChildren] = useState<Child[]>([
-    createEmptyChild(),
-  ]);
+  const [children, setChildren] = useState<Child[]>(
+    initialData?.children && initialData.children.length > 0
+      ? initialData.children
+      : [createEmptyChild()]
+  );
 
   const addChild = () => {
     setChildren(prev => [...prev, createEmptyChild()]);
@@ -172,7 +191,9 @@ const [childErrors, setChildErrors] = useState<
 );
 
 
-  function handleSubmit(){
+  async function handleSubmit(){
+    if (isSubmitting) return; // Prevent multiple submissions
+    
     // Validate all trainer fields
     const trainerValidation = {
       trainerName: !isNonEmpty(trainerName),
@@ -208,14 +229,84 @@ const [childErrors, setChildErrors] = useState<
     }
 
     // ✅ gültig → absenden
-    console.log('Formular gültig, absenden!');
-    setBannerMessage('Anmeldung erfolgreich gespeichert!');
-    setBannerVariant('success');
+    setIsSubmitting(true);
+    try {
+      const athletes = children.map(mapChildToAthlete);
+      
+      if (isEditMode && editToken) {
+        // Prefer the ID passed from the edit page to avoid accidental re-creates
+        const registrationId = initialData?.registrationId 
+          ?? (await loadRegistrationByToken(editToken))?.id;
+
+        if (!registrationId) {
+          throw new Error('Anmeldung nicht gefunden. Bitte öffne den Bearbeitungslink erneut.');
+        }
+        
+        await updateRegistration(registrationId, {
+          guardian_name: trainerName.trim(),
+          club: verein.trim() || null,
+          email: email.trim(),
+          phone: phoneNumber.trim(),
+          athletes,
+        });
+        
+        setBannerMessage('Anmeldung erfolgreich aktualisiert!');
+        setBannerVariant('success');
+        
+        if (onSaveSuccess) {
+          setTimeout(() => {
+            onSaveSuccess();
+          }, 2000);
+        }
+      } else {
+        await saveRegistration({
+          guardian_name: trainerName.trim(),
+          club: verein.trim() || null,
+          email: email.trim(),
+          phone: phoneNumber.trim(),
+          athletes,
+        });
+        
+        // Registration is always saved, email sending is optional
+        setBannerMessage('Anmeldung erfolgreich gespeichert! Eine E-Mail mit dem Bearbeitungslink wurde versendet.');
+        setBannerVariant('success');
+        
+        // Reset form after successful submission
+        setTrainerName('');
+        setVerein('');
+        setEmail('');
+        setPhoneNumber('');
+        setChildren([createEmptyChild()]);
+        setChildErrors({});
+        setTrainerErrors({
+          trainerName: false,
+          verein: false,
+          email: false,
+          phoneNumber: false,
+        });
+      }
+    } catch (error) {
+      console.error('Error saving registration:', error);
+      setBannerMessage(
+        error instanceof Error 
+          ? `Fehler beim Speichern: ${error.message}`
+          : 'Fehler beim Speichern der Anmeldung. Bitte versuche es erneut.'
+      );
+      setBannerVariant('error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <>
         <form className="signUpForm">
+          {isEditMode && (
+            <InformationBanner 
+              message="Sie bearbeiten Ihre Anmeldung. Bitte speichern Sie Ihre Änderungen." 
+              variant="info"
+            />
+          )}
           {bannerMessage && (
             <InformationBanner 
               message={bannerMessage} 
@@ -235,6 +326,7 @@ const [childErrors, setChildErrors] = useState<
                 placeholder='Max Mustermann'
                 value= {trainerName}
                 error={trainerErrors.trainerName}
+                disabled={isEditMode}
                 onChange={(e) => {
                   const value = e.target.value;
                   setTrainerName(value)
@@ -252,6 +344,7 @@ const [childErrors, setChildErrors] = useState<
                 placeholder='SC Liestal'
                 value= {verein}
                 error={trainerErrors.verein}
+                disabled={isEditMode}
                 onChange={(e) => {
                   const value = e.target.value;
                   setVerein(value)
@@ -269,6 +362,7 @@ const [childErrors, setChildErrors] = useState<
                 placeholder='max@scl-athletics.ch'
                 value = {email}
                 error={trainerErrors.email}
+                disabled={isEditMode}
                 onChange={(e) => {
                   const value = e.target.value;
                   setEmail(value)
@@ -286,6 +380,7 @@ const [childErrors, setChildErrors] = useState<
                 placeholder='+41 78 882 26 50'
                 value={phoneNumber}
                 error={trainerErrors.phoneNumber}
+                disabled={isEditMode}
                 onChange={(e) => {
                   const value = e.target.value;
                   setPhoneNumber(value)
@@ -333,9 +428,10 @@ const [childErrors, setChildErrors] = useState<
           <section>
             <div className='add-child-box'>
               <SubmitButton
-              label="Anmeldung speichern"
+              label={isSubmitting ? "Wird gespeichert..." : "Anmeldung speichern"}
               color="#4C1D95"
               onClick={handleSubmit}
+              disabled={isSubmitting}
               />
             </div>
           </section>
