@@ -11,6 +11,8 @@ type FormFieldProps = {
   required?: boolean;
   error?: boolean;
   disabled?: boolean;
+  min?: number | string;
+  max?: number | string;
 };
 
 function FormField({
@@ -24,6 +26,8 @@ function FormField({
   required = true,
   error = false,
   disabled = false,
+  min,
+  max,
 }: FormFieldProps) {
   return (
     <label className='formField'>
@@ -37,6 +41,8 @@ function FormField({
         placeholder={placeholder}
         required={required}
         disabled={disabled}
+        min={min}
+        max={max}
         className={error ? "input-error" : ''}
       />
     </label>
