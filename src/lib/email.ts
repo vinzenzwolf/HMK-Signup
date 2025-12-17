@@ -5,18 +5,83 @@ export const sendEditLinkEmail = async (
   token: string,
   _registrationId: string
 ): Promise<string> => {
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
-  const editLink = `${baseUrl}/edit/${token}`
+  const envBaseUrl =
+    typeof import.meta !== 'undefined' && (import.meta as any).env
+      ? (import.meta as any).env.VITE_SITE_URL ||
+        (import.meta as any).env.PUBLIC_SITE_URL ||
+        (import.meta as any).env.NEXT_PUBLIC_SITE_URL ||
+        ''
+      : ''
+
+  const baseUrl =
+    typeof window !== 'undefined'
+      ? window.location.origin
+      : envBaseUrl
+
+  let editPath = `/edit/${token}`
+
+  // Try to enrich the email with season context (event number + deadlines)
+  let eventTitle = 'SCL Hallenmehrkampf'
+  let signupDeadlineText: string | null = null
+  let paymentDeadlineText: string | null = null
+
+  try {
+    const { data: registration } = await supabase
+      .from('registrations')
+      .select('season_id')
+      .eq('id', _registrationId)
+      .maybeSingle()
+
+    if (registration?.season_id) {
+      const { data: season } = await supabase
+        .from('seasons')
+        .select('event_number, year, signup_deadline, payment_deadline')
+        .eq('id', registration.season_id)
+        .maybeSingle()
+
+      if (season) {
+        eventTitle = season.event_number
+          ? `${season.event_number}. SCL Hallenmehrkampf`
+          : eventTitle
+        signupDeadlineText = season.signup_deadline
+          ? new Date(season.signup_deadline).toLocaleDateString('de-CH')
+          : null
+        paymentDeadlineText = season.payment_deadline
+          ? new Date(season.payment_deadline).toLocaleDateString('de-CH')
+          : null
+        // Include year when available for clarity and use it for the edit link route
+        if (season.year) {
+          eventTitle = `${eventTitle} ${season.year}`
+          editPath = `/${season.year}/edit/${token}`
+        }
+      }
+    }
+  } catch (contextError) {
+    console.warn('Could not enrich edit-link email with season info:', contextError)
+  }
+
+  const editLink = `${baseUrl || ''}${editPath}`
 
   // HTML content for the email that the Supabase Edge Function will send via Resend
   const html = `
-    <h1>Anmeldung SCL Hallenmehrkampf</h1>
-    <p>Vielen Dank für Ihre Anmeldung.</p>
-    <p>Über den folgenden Link können Sie Ihre Anmeldung jederzeit bearbeiten:</p>
+    <h1>Anmeldung ${eventTitle}</h1>
+    <p>Vielen Dank für Ihre Anmeldung. Über den folgenden Link können Sie Ihre Anmeldung bearbeiten:</p>
     <p>
       <a href="${editLink}">${editLink}</a>
     </p>
-    <p>Falls der Link nicht klickbar ist, kopieren Sie ihn bitte in die Adresszeile Ihres Browsers.</p>
+    <p>
+      ${
+        signupDeadlineText
+          ? `Sie können Ihre Anmeldung bis zum Anmeldeschluss am ${signupDeadlineText} über den Link anpassen. Danach sind Änderungen nicht mehr möglich.`
+          : 'Sie können Ihre Anmeldung bis zum Anmeldeschluss über den Link anpassen. Danach sind Änderungen nicht mehr möglich.'
+      }
+      ${
+        paymentDeadlineText
+          ? `<p>Bitte denken Sie daran, die Teilnahmegebühr bis spätestens ${paymentDeadlineText} zu begleichen.</p>`
+          : ''
+      }
+    </p>
+    <p>Bei Fragen oder Unklarheiten melden Sie sich bitte unter <a href="mailto:vinzenzwolf1@gmail.com">vinzenzwolf1@gmail.com</a>.</p>
   `
 
   try {
@@ -24,7 +89,7 @@ export const sendEditLinkEmail = async (
       const { error } = await supabase.functions.invoke('resend-email', {
         body: {
           to: email,
-          subject: 'Ihre Anmeldung zum SCL Hallenmehrkampf - Bearbeitungslink',
+          subject: `Ihre Anmeldung ${eventTitle} - Bearbeitungslink`,
           html
         },
       })
