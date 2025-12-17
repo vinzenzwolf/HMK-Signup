@@ -10,7 +10,6 @@
   margin-right: clamp(1rem, 5vw, 5rem);
   margin-bottom: 2rem;
   width: 100%;
-  min-width: 540px;
   max-width: 700px;
 }
 
@@ -76,29 +75,34 @@
   border-radius: 16px;
 }
 
-.admin-stat-card-blue {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border: 1px solid #bae6fd;
+.admin-stat-card-rose {
+  background: linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%);
+  border: 1px solid #fda4af;
 }
 
-.admin-stat-card-green {
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-  border: 1px solid #bbf7d0;
+.admin-stat-card-sky {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  border: 1px solid #7dd3fc;
 }
 
-.admin-stat-card-yellow {
+.admin-stat-card-amber {
   background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
   border: 1px solid #fcd34d;
 }
 
-.admin-stat-card-pink {
-  background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
-  border: 1px solid #f9a8d4;
+.admin-stat-card-emerald {
+  background: linear-gradient(135deg, #ecfdf3 0%, #d1fae5 100%);
+  border: 1px solid #a7f3d0;
 }
 
-.admin-stat-card-indigo {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  border: 1px solid #93c5fd;
+.admin-stat-card-violet {
+  background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+  border: 1px solid #c4b5fd;
+}
+
+.admin-stat-card-slate {
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  border: 1px solid #94a3b8;
 }
 
 .admin-stat-value {
@@ -107,50 +111,24 @@
   margin-bottom: 0.5rem;
 }
 
-.admin-stat-value-blue {
-  color: #0284c7;
-}
-
-.admin-stat-value-green {
-  color: #16a34a;
-}
-
-.admin-stat-value-yellow {
-  color: #d97706;
-}
-
-.admin-stat-value-pink {
-  color: #db2777;
-}
-
-.admin-stat-value-indigo {
-  color: #2563eb;
-}
+.admin-stat-value-rose { color: #be123c; }
+.admin-stat-value-sky { color: #0369a1; }
+.admin-stat-value-amber { color: #b45309; }
+.admin-stat-value-emerald { color: #047857; }
+.admin-stat-value-violet { color: #5b21b6; }
+.admin-stat-value-slate { color: #1e293b; }
 
 .admin-stat-label {
   font-weight: 600;
   font-size: 0.875rem;
 }
 
-.admin-stat-label-blue {
-  color: #0c4a6e;
-}
-
-.admin-stat-label-green {
-  color: #166534;
-}
-
-.admin-stat-label-yellow {
-  color: #92400e;
-}
-
-.admin-stat-label-pink {
-  color: #9f1239;
-}
-
-.admin-stat-label-indigo {
-  color: #1e40af;
-}
+.admin-stat-label-rose { color: #9f1239; }
+.admin-stat-label-sky { color: #075985; }
+.admin-stat-label-amber { color: #92400e; }
+.admin-stat-label-emerald { color: #065f46; }
+.admin-stat-label-violet { color: #4338ca; }
+.admin-stat-label-slate { color: #334155; }
 
 .admin-clubs-list {
   margin-top: 2rem;
@@ -202,6 +180,35 @@
   font-weight: 700;
   min-width: 2rem;
   text-align: center;
+}
+
+.admin-checkbox {
+  width: 18px;
+  height: 18px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #ffffff;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.admin-checkbox:checked {
+  background: #ffffff;
+  border-color: #16a34a;
+}
+
+.admin-checkbox:checked::after {
+  content: '✓';
+  color: #16a34a;
+  font-size: 14px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -55%);
 }
 
 .admin-search-wrapper {
