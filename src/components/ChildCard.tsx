@@ -82,6 +82,7 @@ const ChildCard = memo(function ChildCard({
                 type="number"
                 value={child.jahrgang}
                 error={errors?.jahrgang}
+                max={new Date().getFullYear() - 1}
                 onChange={(e) =>
                 onChange(child.id, 'jahrgang', e.target.value)
                 }
