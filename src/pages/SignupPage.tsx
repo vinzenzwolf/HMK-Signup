@@ -4,13 +4,15 @@ import './SignupPage.css'
 import Tag from '../components/Tag'
 import SignUpForm from '../components/SignUpForm'
 import InformationBanner from '../components/InformationBanner'
-import { loadRegistrationByToken, mapAthleteToChild } from '../lib/database'
+import { loadActiveSeason, loadRegistrationByToken, loadSeasonByYear, loadSeasonById, mapAthleteToChild } from '../lib/database'
 import type { Child } from '../types/child'
+import type { Season } from '../lib/database'
 
 function SignupPage() {
-  const { token } = useParams<{ token?: string }>()
-  const [isLoading, setIsLoading] = useState(!!token)
+  const { token, year } = useParams<{ token?: string; year?: string }>()
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [notFound, setNotFound] = useState(false)
   const [initialData, setInitialData] = useState<{
     registrationId?: string
     trainerName: string
@@ -19,31 +21,62 @@ function SignupPage() {
     phoneNumber: string
     children: Child[]
   } | null>(null)
+  const [season, setSeason] = useState<Season | null>(null)
 
   useEffect(() => {
     async function loadData() {
-      if (!token) {
-        setIsLoading(false)
-        return
-      }
-
       try {
-        const registration = await loadRegistrationByToken(token)
-        
-        if (!registration) {
-          setError('Anmeldung nicht gefunden. Bitte überprüfen Sie den Link.')
+        // 1) Load season (by URL year or active)
+        const yearNumber = year ? parseInt(year, 10) : undefined
+        if (year && (Number.isNaN(yearNumber) || `${yearNumber}` !== year)) {
+          setNotFound(true)
           setIsLoading(false)
           return
         }
 
-        setInitialData({
-          registrationId: registration.id,
-          trainerName: registration.guardian_name,
-          verein: registration.club || '',
-          email: registration.email,
-          phoneNumber: registration.phone,
-          children: registration.athletes.map(mapAthleteToChild),
-        })
+        let seasonData = yearNumber
+          ? await loadSeasonByYear(yearNumber)
+          : await loadActiveSeason()
+
+        // 2) If edit token, load existing registration
+        if (token) {
+          const registration = await loadRegistrationByToken(token)
+        
+          if (!registration) {
+            setError('Anmeldung nicht gefunden. Bitte überprüfen Sie den Link.')
+            setIsLoading(false)
+            return
+          }
+
+          setInitialData({
+            registrationId: registration.id,
+            trainerName: registration.guardian_name,
+            verein: registration.club || '',
+            email: registration.email,
+            phoneNumber: registration.phone,
+            children: registration.athletes.map(mapAthleteToChild),
+          })
+
+          // Align season with the registration's season if available
+          if (registration.season_id) {
+            if (!seasonData || seasonData.id !== registration.season_id) {
+              const seasonById = await loadSeasonById(registration.season_id)
+              seasonData = seasonById ?? seasonData
+            }
+          }
+        }
+
+        if (!seasonData) {
+          if (year) {
+            setNotFound(true)
+          } else {
+            setError('Keine aktive Saison gefunden. Bitte Admin kontaktieren.')
+          }
+          setIsLoading(false)
+          return
+        }
+
+        setSeason(seasonData)
       } catch (err) {
         console.error('Error loading registration:', err)
         setError('Fehler beim Laden der Anmeldung. Bitte versuchen Sie es erneut.')
@@ -53,7 +86,16 @@ function SignupPage() {
     }
 
     loadData()
-  }, [token])
+  }, [token, year])
+
+  function formatDate(dateString: string) {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('de-CH', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+  }
 
   if (isLoading) {
     return (
@@ -63,15 +105,25 @@ function SignupPage() {
     )
   }
 
+  if (notFound) {
+    return (
+      <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+        <h1>404</h1>
+        <p>Die angeforderte Seite wurde nicht gefunden.</p>
+      </div>
+    )
+  }
+
   return (
     <>
       <div className="title">
-        <Tag>2027</Tag>
+        <Tag>{season ? String(season.year) : '----'}</Tag>
         <h1>Anmeldung SCL Hallenmehrkampf</h1>
         <p>Anmeldeformular für Vereine</p>
         <div className="tags">
-          <Tag>Kategorien: U10, U12, U14</Tag>
-          <Tag>Anmeldefrist: 15.01.2027</Tag>
+          <Tag>{`Wettkampfdatum: ${season ? formatDate(season.event_date) : '--.--.----'}`}</Tag>
+          <Tag>{`Anmeldefrist: ${season ? formatDate(season.signup_deadline) : '--.--.----'}`}</Tag>
+          <Tag>{`Zahlungsfrist: ${season ? formatDate(season.payment_deadline) : '--.--.----'}`}</Tag>
         </div>
       </div>
 
@@ -82,6 +134,8 @@ function SignupPage() {
         <SignUpForm
           initialData={initialData || undefined}
           editToken={token}
+          seasonId={season?.id}
+          seasonYear={season?.year}
           onSaveSuccess={() => {
             // Bei Bearbeitung: auf der Seite bleiben, damit der editToken erhalten bleibt
           }}
