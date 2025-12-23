@@ -253,12 +253,21 @@ export async function saveRegistration(data: RegistrationData): Promise<Registra
   }
 
   // Try to send email with edit link - if this fails, registration is still saved
+  // but we throw the error so the UI can handle it (e.g., allow user to correct email)
   try {
     await sendEditLinkEmail(data.email, editToken, registration.id)
   } catch (error) {
     console.error('Failed to send email, but registration was saved:', error)
-    // Don't throw - registration was successful, email is optional
-    // The edit link is still available and can be used
+    // Re-throw email errors so the UI can handle them
+    // Registration was successful, but user should be able to correct email
+    if (error instanceof Error && (error as any).isEmailError) {
+      throw error
+    }
+    // For other errors, still throw but mark as email error
+    const emailError = new Error(`E-Mail konnte nicht versendet werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`)
+    ;(emailError as any).isEmailError = true
+    ;(emailError as any).emailAddress = data.email
+    throw emailError
   }
 
   return {
@@ -272,6 +281,8 @@ export async function loadActiveSeason(): Promise<Season | null> {
     .from('seasons')
     .select('*')
     .eq('is_active', true)
+    .order('year', { ascending: false })
+    .limit(1)
     .maybeSingle()
 
   if (error) {

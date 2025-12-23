@@ -69,6 +69,7 @@ const [childErrors, setChildErrors] = useState<
   const [bannerMessage, setBannerMessage] = useState<string | null>(null);
   const [bannerVariant, setBannerVariant] = useState<'error' | 'info' | 'success'>('success');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emailError, setEmailError] = useState(false);
   // Kostenberechnung nach Initialisierung der Kinder
 
   const allowedYears = useMemo(() => {
@@ -446,6 +447,7 @@ const [childErrors, setChildErrors] = useState<
           season_id: seasonId,
         });
         
+        setEmailError(false); // Clear email error on success
         if (!skipNavigation) {
           setBannerMessage('Anmeldung erfolgreich aktualisiert!');
           setBannerVariant('success');
@@ -467,6 +469,7 @@ const [childErrors, setChildErrors] = useState<
           season_id: seasonId,
         });
         
+        setEmailError(false); // Clear email error on success
         if (!skipNavigation) {
           // Registration is always saved, email sending is optional
           setBannerMessage('Anmeldung erfolgreich gespeichert! Eine E-Mail mit dem Bearbeitungslink wurde versendet. Sie werden nun zur Bearbeitungsseite weitergeleitet...');
@@ -498,13 +501,33 @@ const [childErrors, setChildErrors] = useState<
       }
     } catch (error) {
       console.error('Error saving registration:', error);
-      setBannerMessage(
-        error instanceof Error 
-          ? `Fehler beim Speichern: ${error.message}`
-          : 'Fehler beim Speichern der Anmeldung. Bitte versuche es erneut.'
-      );
-      setBannerVariant('error');
-      return false;
+      
+      // Check if this is an email error
+      const isEmailError = error instanceof Error && (error as any).isEmailError;
+      
+      if (isEmailError) {
+        // Registration was saved, but email failed
+        setEmailError(true);
+        setTrainerErrors(prev => ({
+          ...prev,
+          email: true,
+        }));
+        setBannerMessage(
+          'E-Mail konnte nicht versendet werden. Bitte korrigieren Sie die E-Mail-Adresse und versuchen Sie es erneut. Die Anmeldung wurde bereits gespeichert.'
+        );
+        setBannerVariant('error');
+        return false;
+      } else {
+        // Other errors
+        setEmailError(false);
+        setBannerMessage(
+          error instanceof Error 
+            ? `Fehler beim Speichern: ${error.message}`
+            : 'Fehler beim Speichern der Anmeldung. Bitte versuche es erneut.'
+        );
+        setBannerVariant('error');
+        return false;
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -578,10 +601,11 @@ const [childErrors, setChildErrors] = useState<
                 placeholder='max@scl-athletics.ch'
                 value = {email}
                 error={trainerErrors.email}
-                disabled={isEditMode}
+                disabled={isEditMode && !emailError}
                 onChange={(e) => {
                   const value = e.target.value;
                   setEmail(value)
+                  setEmailError(false); // Clear email error when user starts typing
                   setTrainerErrors(prev => ({
                       ...prev,
                       email: !isValidEmail(value),
