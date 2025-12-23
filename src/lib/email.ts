@@ -77,7 +77,7 @@ export const sendEditLinkEmail = async (
       }
       ${
         paymentDeadlineText
-          ? `<p>Bitte denken Sie daran, die Teilnahmegebühr bis spätestens ${paymentDeadlineText} zu begleichen.</p>`
+          ? `<p>Bitte denken Sie daran, die Teilnahmegebühr bis spätestens ${paymentDeadlineText} zu begleichen. Sie können die Rechnung ebenfalls über den obenstehenden Link einsehen.</p>`
           : ''
       }
     </p>
