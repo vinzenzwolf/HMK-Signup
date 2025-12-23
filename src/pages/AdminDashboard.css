@@ -268,7 +268,8 @@
 .admin-registrations-list {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
 }
 
 .admin-clubs-title {
@@ -363,6 +364,7 @@
   background-color: #f8fafc;
   transition: all 0.2s;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  margin-bottom: 0;
 }
 
 .admin-registration-card:hover {

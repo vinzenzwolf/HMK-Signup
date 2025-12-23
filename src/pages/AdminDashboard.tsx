@@ -62,6 +62,7 @@ function AdminDashboard() {
   const [isSeasonEditExpanded, setIsSeasonEditExpanded] = useState(true)
   const [isStatisticsExpanded, setIsStatisticsExpanded] = useState(true)
   const [isRegistrationsExpanded, setIsRegistrationsExpanded] = useState(true)
+  const [expandedAthletes, setExpandedAthletes] = useState<Set<string>>(new Set())
   const [editSeasonForm, setEditSeasonForm] = useState({
     year: new Date().getFullYear(),
     event_date: '',
@@ -1417,7 +1418,7 @@ function AdminDashboard() {
             </div>
             
             {/* Search bar integrated */}
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
               <input
                 type="text"
                 placeholder="Suchen nach Trainer, Verein, E-Mail, Telefon oder Athlet..."
@@ -1624,13 +1625,40 @@ function AdminDashboard() {
 
                   {/* Athletes List */}
                   <div className="admin-athletes-section">
-                    <div className="admin-athletes-header">
-                      <strong className="admin-athletes-title">
-                        Athleten ({reg.athletes.length})
-                      </strong>
+                    <div 
+                      className="admin-athletes-header"
+                      style={{ 
+                        cursor: 'pointer',
+                        userSelect: 'none'
+                      }}
+                      onClick={() => {
+                        const newExpanded = new Set(expandedAthletes)
+                        if (newExpanded.has(reg.id)) {
+                          newExpanded.delete(reg.id)
+                        } else {
+                          newExpanded.add(reg.id)
+                        }
+                        setExpandedAthletes(newExpanded)
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ 
+                          fontSize: '1rem', 
+                          transition: 'transform 0.2s',
+                          transform: expandedAthletes.has(reg.id) ? 'rotate(180deg)' : 'rotate(0deg)'
+                        }}>
+                          ▼
+                        </span>
+                        <strong className="admin-athletes-title">
+                          Athleten ({reg.athletes.length})
+                        </strong>
+                      </div>
                       {isEditingRegistration && (
                         <button
-                          onClick={() => handleAddAthlete(reg.id)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleAddAthlete(reg.id)
+                          }}
                           className="admin-button admin-button-secondary admin-add-athlete-button"
                         >
                           + Athlet hinzufügen
@@ -1639,7 +1667,7 @@ function AdminDashboard() {
                     </div>
                     {reg.athletes.length === 0 ? (
                       <p className="admin-empty-athletes">Keine Athleten</p>
-                    ) : (
+                    ) : expandedAthletes.has(reg.id) && (
                       <div className="admin-athletes-list">
                         {reg.athletes.map((athlete) => (
                           <div key={athlete.id} className="admin-athlete-card">
