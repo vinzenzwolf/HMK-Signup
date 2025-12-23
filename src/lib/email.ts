@@ -96,12 +96,29 @@ export const sendEditLinkEmail = async (
 
       if (error) {
         console.error('Error invoking resend-email function:', error)
+        // Throw a specific error that can be caught and handled
+        const emailError = new Error(`E-Mail konnte nicht versendet werden: ${error.message || 'Ungültige E-Mail-Adresse'}`)
+        ;(emailError as any).isEmailError = true
+        ;(emailError as any).emailAddress = email
+        throw emailError
       }
     } else {
       console.warn('Supabase client not configured, skipping email send')
+      const emailError = new Error('E-Mail-Service nicht konfiguriert')
+      ;(emailError as any).isEmailError = true
+      throw emailError
     }
   } catch (error) {
     console.error('Error sending email via resend-email function:', error)
+    // Re-throw if it's already our custom error
+    if (error instanceof Error && (error as any).isEmailError) {
+      throw error
+    }
+    // Otherwise wrap it
+    const emailError = new Error(`E-Mail konnte nicht versendet werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`)
+    ;(emailError as any).isEmailError = true
+    ;(emailError as any).emailAddress = email
+    throw emailError
   }
 
   // Always return the edit link so it can be shown in the UI as fallback
