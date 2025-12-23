@@ -1,5 +1,6 @@
 import FormField from './FormField'
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './SignUpForm.css'
 import type { Child } from '../types/child';
 import ChildCard from './ChildCard';
@@ -7,7 +8,9 @@ import DashedButton from './DashedButton';
 import SubmitButton from './SubmitButton';
 import ExcelTool from './ExcelTool';
 import InformationBanner from './InformationBanner';
+import InvoiceSection from './InvoiceSection';
 import { saveRegistration, updateRegistration, loadRegistrationByToken, mapChildToAthlete } from '../lib/database';
+import logoSrcUrl from '../assets/SCL_Logo.png';
 
 type SignUpFormProps = {
   initialData?: {
@@ -21,6 +24,7 @@ type SignUpFormProps = {
   editToken?: string
   seasonId?: string
   seasonYear?: number
+  seasonPaymentDeadline?: string | null
   onSaveSuccess?: () => void
 }
 
@@ -34,8 +38,9 @@ function createEmptyChild(): Child {
   };
 }
 
-function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYear }: SignUpFormProps = {}) {
+function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYear, seasonPaymentDeadline }: SignUpFormProps = {}) {
   const isEditMode = !!editToken
+  const navigate = useNavigate()
   
   const [trainerName, setTrainerName] = useState(initialData?.trainerName || "");
   const [verein, setVerein] = useState(initialData?.verein || "");
@@ -120,7 +125,111 @@ const [childErrors, setChildErrors] = useState<
 
   const totalCost = useMemo(() => children.length * 15, [children.length]);
   const clubLabel = useMemo(() => verein.trim() || 'Ihr Verein', [verein]);
-  const qrRef = useRef<HTMLDivElement | null>(null)
+  const invoiceDate = useMemo(() => new Date(), [])
+  const invoiceDueDate = useMemo(() => {
+    if (seasonPaymentDeadline) {
+      const d = new Date(seasonPaymentDeadline)
+      if (!Number.isNaN(d.getTime())) return d
+    }
+    const date = new Date()
+    date.setDate(date.getDate() + 30)
+    return date
+  }, [seasonPaymentDeadline])
+  const [invoiceBillDataUrl, setInvoiceBillDataUrl] = useState<string | null>(null)
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null)
+
+  // Load logo as data URL for PDF (loads via HTTP, doesn't touch the file)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    async function loadLogoAsDataUrl() {
+      try {
+        // Use the imported URL from Vite - this will be a URL like /assets/SCL_Logo-abc123.png
+        const response = await fetch(logoSrcUrl)
+        if (!response.ok) {
+          console.warn('Logo konnte nicht geladen werden:', response.status)
+          setLogoDataUrl(null)
+          return
+        }
+        
+        const blob = await response.blob()
+        
+        // Convert blob to data URL using FileReader
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string
+          if (dataUrl && dataUrl.startsWith('data:')) {
+            setLogoDataUrl(dataUrl)
+          } else {
+            setLogoDataUrl(null)
+          }
+        }
+        reader.onerror = () => {
+          console.warn('Fehler beim Konvertieren des Logos')
+          setLogoDataUrl(null)
+        }
+        reader.readAsDataURL(blob)
+      } catch (err) {
+        console.warn('Logo konnte nicht geladen werden:', err)
+        setLogoDataUrl(null)
+      }
+    }
+    
+    loadLogoAsDataUrl()
+  }, [])
+
+  useEffect(() => {
+    ;(async () => {
+      if (typeof globalThis === 'undefined' || (globalThis as any).Buffer) return
+      try {
+        const mod = await import('buffer')
+        if (mod?.Buffer) {
+          ;(globalThis as any).Buffer = mod.Buffer
+        }
+      } catch (err) {
+        console.error('Buffer Polyfill konnte nicht geladen werden:', err)
+      }
+    })()
+  }, [])
+
+
+  async function svgToPngDataUrl(svg: string): Promise<string | null> {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return null
+    return new Promise(resolve => {
+      try {
+        const blob = new Blob([svg], { type: 'image/svg+xml' })
+        const url = URL.createObjectURL(blob)
+        const img = new Image()
+        img.onload = () => {
+          const scale = 2 // render at 2x for better quality
+          const targetWidth = (img.naturalWidth || 840) * scale
+          const targetHeight = (img.naturalHeight || 420) * scale
+          const canvas = document.createElement('canvas')
+          canvas.width = targetWidth
+          canvas.height = targetHeight
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            URL.revokeObjectURL(url)
+            resolve(null)
+            return
+          }
+          ctx.imageSmoothingEnabled = true
+          ctx.imageSmoothingQuality = 'high'
+          ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
+          URL.revokeObjectURL(url)
+          resolve(canvas.toDataURL('image/png'))
+        }
+        img.onerror = () => {
+          URL.revokeObjectURL(url)
+          resolve(null)
+        }
+        img.src = url
+      } catch (err) {
+        console.error('SVG → PNG Konvertierung fehlgeschlagen:', err)
+        resolve(null)
+      }
+    })
+  }
 
   const addChild = () => {
     setChildren(prev => [...prev, createEmptyChild()]);
@@ -214,24 +323,17 @@ const [childErrors, setChildErrors] = useState<
 );
 
   useEffect(() => {
-    const container = qrRef.current
-    if (!container) return
-    container.innerHTML = ''
     ;(async () => {
       try {
         const mod = await import('swissqrbill/svg')
-        const SwissQRCode = (mod as any).SwissQRCode || (mod as any).default?.SwissQRCode
-        if (!SwissQRCode) {
-          console.error('SwissQRCode Klasse nicht gefunden.')
-          return
-        }
-        // Use SwissQRCode to render only the QR graphic (no receipt/sections)
-        const qr = new SwissQRCode(
+        const SwissQRBill = (mod as any).SwissQRBill || (mod as any).default?.SwissQRBill
+        if (!SwissQRBill) return
+        const bill = new SwissQRBill(
           {
             currency: 'CHF',
             amount: Math.max(totalCost || 0, 0),
             creditor: {
-              account: 'CH0700769016110842422', // IBAN required by swissqrbill
+              account: 'CH0700769016110842422',
               name: 'SC Liestal',
               address: 'Leichtathletik',
               zip: '4410',
@@ -248,50 +350,20 @@ const [childErrors, setChildErrors] = useState<
             reference: '',
             additionalInformation: `Vereinsname: ${clubLabel || 'Ihr Verein'}`,
           },
-          60 // size in mm; tweak if needed
+          { language: 'DE' }
         )
-        const svg = qr.element || qr.toString?.()
-        if (!svg) return
-        if (typeof svg === 'string') {
-          container.innerHTML = svg
-        } else {
-          // replaceChildren ensures we never accumulate duplicate SVGs
-          container.replaceChildren(svg)
-        }
-        const svgEl = container.querySelector('svg')
-        if (svgEl) {
-          const { width, height } = svgEl.getBoundingClientRect()
-          console.log('QR SVG size', {
-            width: Math.round(width),
-            height: Math.round(height),
-            viewBox: svgEl.getAttribute('viewBox'),
-          })
-        }
+        const svg = bill?.toString?.()
+        if (!svg || typeof svg !== 'string') return
+        const pngUrl = await svgToPngDataUrl(svg)
+        if (pngUrl) setInvoiceBillDataUrl(pngUrl)
       } catch (err) {
-        console.error('QR-Bill konnte nicht erstellt werden:', err)
+        console.error('QR-Bill (Einzahlungsschein) konnte nicht erstellt werden:', err)
       }
     })()
-    // Cleanup: clear container to avoid duplicates on re-render/unmount
-    return () => {
-      if (qrRef.current) {
-        qrRef.current.innerHTML = ''
-      }
-    }
   }, [totalCost, clubLabel])
 
 
-  async function handleSubmit(){
-    if (isSubmitting) return; // Prevent multiple submissions
-    
-    // Validate all trainer fields
-    const trainerValidation = {
-      trainerName: !isNonEmpty(trainerName),
-      verein: !isNonEmpty(verein),
-      email: !isValidEmail(email),
-      phoneNumber: !isValidPhoneNumber(phoneNumber),
-    };
-    setTrainerErrors(trainerValidation);
-
+  function validateChildren(): boolean {
     // Validate all children
     const newChildErrors: Record<string, ChildErrors> = {};
     children.forEach(child => {
@@ -308,14 +380,32 @@ const [childErrors, setChildErrors] = useState<
       };
     });
     setChildErrors(newChildErrors);
-
-    // Check if form is valid
-    const hasTrainerErrors = Object.values(trainerValidation).some(err => err);
+    
+    // Check if there are any child errors
     const hasChildErrors = Object.values(newChildErrors).some(childErr => 
       Object.values(childErr).some(err => err)
     );
+    
+    return !hasChildErrors;
+  }
 
-    if (hasTrainerErrors || hasChildErrors) {
+  async function saveFormData(skipNavigation = false): Promise<boolean> {
+    if (isSubmitting) return false; // Prevent multiple submissions
+    
+    // Validate all trainer fields
+    const trainerValidation = {
+      trainerName: !isNonEmpty(trainerName),
+      verein: !isNonEmpty(verein),
+      email: !isValidEmail(email),
+      phoneNumber: !isValidPhoneNumber(phoneNumber),
+    };
+    setTrainerErrors(trainerValidation);
+
+    // Validate all children
+    const isChildrenValid = validateChildren();
+    const hasTrainerErrors = Object.values(trainerValidation).some(err => err);
+
+    if (hasTrainerErrors || !isChildrenValid) {
       const allowedLabel = allowedYears ? `Erlaubte Jahrgänge: ${allowedYears.label}` : undefined
       setBannerMessage(
         allowedLabel
@@ -323,7 +413,7 @@ const [childErrors, setChildErrors] = useState<
           : 'Bitte überprüfe alle Felder und korrigiere die Fehler.'
       );
       setBannerVariant('error');
-      return; // ❌ ungültig → Fehler werden angezeigt
+      return false; // ❌ ungültig → Fehler werden angezeigt
     }
 
     // ✅ gültig → absenden
@@ -335,7 +425,7 @@ const [childErrors, setChildErrors] = useState<
         setBannerMessage('Keine Saison ausgewählt. Bitte erneut laden oder Admin kontaktieren.');
         setBannerVariant('error');
         setIsSubmitting(false);
-        return;
+        return false;
       }
       
       if (isEditMode && editToken) {
@@ -356,16 +446,19 @@ const [childErrors, setChildErrors] = useState<
           season_id: seasonId,
         });
         
-        setBannerMessage('Anmeldung erfolgreich aktualisiert!');
-        setBannerVariant('success');
-        
-        if (onSaveSuccess) {
-          setTimeout(() => {
-            onSaveSuccess();
-          }, 2000);
+        if (!skipNavigation) {
+          setBannerMessage('Anmeldung erfolgreich aktualisiert!');
+          setBannerVariant('success');
+          
+          if (onSaveSuccess) {
+            setTimeout(() => {
+              onSaveSuccess();
+            }, 2000);
+          }
         }
+        return true;
       } else {
-        await saveRegistration({
+        const result = await saveRegistration({
           guardian_name: trainerName.trim(),
           club: verein.trim() || null,
           email: email.trim(),
@@ -374,23 +467,34 @@ const [childErrors, setChildErrors] = useState<
           season_id: seasonId,
         });
         
-        // Registration is always saved, email sending is optional
-        setBannerMessage('Anmeldung erfolgreich gespeichert! Eine E-Mail mit dem Bearbeitungslink wurde versendet.');
-        setBannerVariant('success');
-        
-        // Reset form after successful submission
-        setTrainerName('');
-        setVerein('');
-        setEmail('');
-        setPhoneNumber('');
-        setChildren([createEmptyChild()]);
-        setChildErrors({});
-        setTrainerErrors({
-          trainerName: false,
-          verein: false,
-          email: false,
-          phoneNumber: false,
-        });
+        if (!skipNavigation) {
+          // Registration is always saved, email sending is optional
+          setBannerMessage('Anmeldung erfolgreich gespeichert! Eine E-Mail mit dem Bearbeitungslink wurde versendet. Sie werden nun zur Bearbeitungsseite weitergeleitet...');
+          setBannerVariant('success');
+          
+          // Navigate to edit page with token
+          if (result.edit_token && seasonYear) {
+            // Redirect after a short delay to show success message
+            setTimeout(() => {
+              navigate(`/${seasonYear}/edit/${result.edit_token}`);
+            }, 1500);
+          } else {
+            // Fallback: Reset form if navigation is not possible
+            setTrainerName('');
+            setVerein('');
+            setEmail('');
+            setPhoneNumber('');
+            setChildren([createEmptyChild()]);
+            setChildErrors({});
+            setTrainerErrors({
+              trainerName: false,
+              verein: false,
+              email: false,
+              phoneNumber: false,
+            });
+          }
+        }
+        return true;
       }
     } catch (error) {
       console.error('Error saving registration:', error);
@@ -400,9 +504,14 @@ const [childErrors, setChildErrors] = useState<
           : 'Fehler beim Speichern der Anmeldung. Bitte versuche es erneut.'
       );
       setBannerVariant('error');
+      return false;
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleSubmit(){
+    await saveFormData(false);
   };
 
   return (
@@ -543,24 +652,38 @@ const [childErrors, setChildErrors] = useState<
             </div>
           </section>
 
-          <section>
-            <header>
-              <h2>Zahlungsbedingungen</h2>
-            </header>
-            <div className="payment-row">
-              <div className="payment-box">
-                <p><strong>Gesamtbetrag:</strong> CHF {totalCost}.– (15 CHF pro Athlet/in)</p>
-                <p><strong>Einzahlung:</strong> Basellandschaftliche Kantonalbank, PC 40-44-0</p>
-                <p><strong>Zugunsten von:</strong> CH07 0076 9016 1108 4242 2</p>
-                <p><strong>Begünstigter:</strong> SC Liestal, Leichtathletik, 4410</p>
-                <p><strong>Vermerk:</strong> Vereinsname: {clubLabel}</p>
-              </div>
-              <div className="qr-box">
-                <div ref={qrRef} id="qr-container" />
-              </div>
-            </div>
-          </section>
-
+          <InvoiceSection
+            clubName={verein || 'Verein'}
+            trainerName={trainerName || 'Trainer/in'}
+            athleteCount={children.length}
+            totalAmount={Math.max(totalCost, 0)}
+            invoiceDate={invoiceDate}
+            dueDate={invoiceDueDate}
+            logoSrc={logoDataUrl}
+            billDataUrl={invoiceBillDataUrl}
+            onDownloadClick={async () => {
+              // Validate children first
+              const isChildrenValid = validateChildren();
+              if (!isChildrenValid) {
+                const allowedLabel = allowedYears ? `Erlaubte Jahrgänge: ${allowedYears.label}` : undefined
+                setBannerMessage(
+                  allowedLabel
+                    ? `Bitte überprüfe alle Athleten-Felder und korrigiere die Fehler vor dem Download. ${allowedLabel}`
+                    : 'Bitte überprüfe alle Athleten-Felder und korrigiere die Fehler vor dem Download.'
+                );
+                setBannerVariant('error');
+                return false;
+              }
+              
+              // Save form data before allowing download (skip navigation)
+              const saved = await saveFormData(true);
+              if (saved) {
+                setBannerMessage('Formular wurde gespeichert. Rechnung wird heruntergeladen...');
+                setBannerVariant('success');
+              }
+              return saved;
+            }}
+          />
 
         </form>
     </>

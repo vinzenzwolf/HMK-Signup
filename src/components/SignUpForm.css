@@ -82,6 +82,41 @@ section:first-of-type {
   flex-direction: column;
 }
 
+.invoice-box {
+  margin-top: 0.75rem;
+  padding: 1rem 1.2rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.invoice-button {
+  background: #0f172a;
+  color: #fff;
+  border: 0;
+  border-radius: 12px;
+  padding: 0.8rem 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  box-shadow: 0 12px 24px color-mix(in srgb, #0f172a 25%, transparent);
+}
+
+.invoice-button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+  box-shadow: 0 16px 32px color-mix(in srgb, #0f172a 35%, transparent);
+}
+
+.invoice-button:active {
+  transform: translateY(0);
+}
+
 @media (max-width: 640px) {
   .payment-box,
   .qr-box {
