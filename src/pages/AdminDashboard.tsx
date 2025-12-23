@@ -122,6 +122,13 @@ function AdminDashboard() {
     filterRegistrations()
   }, [searchQuery, registrations])
 
+  useEffect(() => {
+    // Beim Ausklappen der Statistiken automatisch aktualisieren, wenn keine Statistiken vorhanden sind
+    if (isStatisticsExpanded && !statistics && selectedSeasonId) {
+      loadRegistrations(selectedSeasonId)
+    }
+  }, [isStatisticsExpanded])
+
 
   function filterRegistrations() {
     if (!searchQuery.trim()) {
