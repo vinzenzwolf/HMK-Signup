@@ -407,12 +407,7 @@ const [childErrors, setChildErrors] = useState<
     const hasTrainerErrors = Object.values(trainerValidation).some(err => err);
 
     if (hasTrainerErrors || !isChildrenValid) {
-      const allowedLabel = allowedYears ? `Erlaubte Jahrgänge: ${allowedYears.label}` : undefined
-      setBannerMessage(
-        allowedLabel
-          ? `Bitte überprüfe alle Felder und korrigiere die Fehler. ${allowedLabel}`
-          : 'Bitte überprüfe alle Felder und korrigiere die Fehler.'
-      );
+      setBannerMessage('Bitte überprüfe alle Felder und korrigiere die Fehler.');
       setBannerVariant('error');
       return false; // ❌ ungültig → Fehler werden angezeigt
     }
@@ -689,12 +684,7 @@ const [childErrors, setChildErrors] = useState<
               // Validate children first
               const isChildrenValid = validateChildren();
               if (!isChildrenValid) {
-                const allowedLabel = allowedYears ? `Erlaubte Jahrgänge: ${allowedYears.label}` : undefined
-                setBannerMessage(
-                  allowedLabel
-                    ? `Bitte überprüfe alle Athleten-Felder und korrigiere die Fehler vor dem Download. ${allowedLabel}`
-                    : 'Bitte überprüfe alle Athleten-Felder und korrigiere die Fehler vor dem Download.'
-                );
+                setBannerMessage('Bitte überprüfe alle Athleten-Felder und korrigiere die Fehler vor dem Download.');
                 setBannerVariant('error');
                 return false;
               }
