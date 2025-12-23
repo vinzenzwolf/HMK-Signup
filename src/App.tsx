@@ -26,6 +26,7 @@ function App() {
             />
             <Route path="/:year/edit/:token" element={<SignupPage />} />
             <Route path="/:year" element={<SignupPage />} />
+            <Route path="/" element={<SignupPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>

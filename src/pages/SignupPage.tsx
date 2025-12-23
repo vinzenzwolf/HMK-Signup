@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import './SignupPage.css'
 import Tag from '../components/Tag'
 import SignUpForm from '../components/SignUpForm'
@@ -10,6 +10,7 @@ import type { Season } from '../lib/database'
 
 function SignupPage() {
   const { token, year } = useParams<{ token?: string; year?: string }>()
+  const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [notFound, setNotFound] = useState(false)
@@ -76,6 +77,19 @@ function SignupPage() {
           return
         }
 
+        // Prüfe, ob die Saison aktiv ist
+        if (!seasonData.is_active) {
+          setError('Diese Saison ist nicht mehr verfügbar. Bitte Admin kontaktieren.')
+          setIsLoading(false)
+          return
+        }
+
+        // Wenn kein Jahr in der URL ist und kein Token vorhanden ist, weiterleiten zur neuesten aktiven Saison
+        if (!year && !token && seasonData) {
+          navigate(`/${seasonData.year}`, { replace: true })
+          return
+        }
+
         setSeason(seasonData)
       } catch (err) {
         console.error('Error loading registration:', err)
@@ -86,7 +100,7 @@ function SignupPage() {
     }
 
     loadData()
-  }, [token, year])
+  }, [token, year, navigate])
 
   function formatDate(dateString: string) {
     const date = new Date(dateString)
