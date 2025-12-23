@@ -58,8 +58,8 @@ function AdminDashboard() {
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null)
   const [isLoadingSeasons, setIsLoadingSeasons] = useState(true)
   const [showCreateSeason, setShowCreateSeason] = useState(false)
-  const [isSeasonSelectExpanded, setIsSeasonSelectExpanded] = useState(true)
-  const [isSeasonEditExpanded, setIsSeasonEditExpanded] = useState(true)
+  const [isSeasonSelectExpanded, setIsSeasonSelectExpanded] = useState(false)
+  const [isSeasonEditExpanded, setIsSeasonEditExpanded] = useState(false)
   const [isStatisticsExpanded, setIsStatisticsExpanded] = useState(true)
   const [isRegistrationsExpanded, setIsRegistrationsExpanded] = useState(true)
   const [expandedAthletes, setExpandedAthletes] = useState<Set<string>>(new Set())
@@ -114,21 +114,14 @@ function AdminDashboard() {
   }, [selectedSeasonId, isLoadingSeasons])
 
   useEffect(() => {
-    if (registrations.length > 0) {
-      calculateStatistics()
-    }
+    // Statistiken immer aktualisieren, auch wenn der Abschnitt eingeklappt ist
+    // Auch bei 0 Registrierungen werden Statistiken mit Werten von 0 angezeigt
+    calculateStatistics()
   }, [registrations])
 
   useEffect(() => {
     filterRegistrations()
   }, [searchQuery, registrations])
-
-  useEffect(() => {
-    // Beim Ausklappen der Statistiken automatisch aktualisieren, wenn keine Statistiken vorhanden sind
-    if (isStatisticsExpanded && !statistics && selectedSeasonId) {
-      loadRegistrations(selectedSeasonId)
-    }
-  }, [isStatisticsExpanded])
 
 
   function filterRegistrations() {
@@ -669,19 +662,29 @@ function AdminDashboard() {
 
       if (regError) throw regError
 
-      // Save all athlete changes
-      for (const athlete of registration.athletes) {
-        const { error: athleteError } = await supabase
-          .from('athletes')
-          .update({
-            first_name: athlete.first_name,
-            last_name: athlete.last_name,
-            birth_year: athlete.birth_year,
-            gender: athlete.gender,
-          })
-          .eq('id', athlete.id)
+      // Delete all existing athletes for this registration
+      const { error: deleteError } = await supabase
+        .from('athletes')
+        .delete()
+        .eq('registration_id', regId)
 
-        if (athleteError) throw athleteError
+      if (deleteError) throw deleteError
+
+      // Insert all athletes (both existing and new ones)
+      if (registration.athletes.length > 0) {
+        const athletesToInsert = registration.athletes.map(athlete => ({
+          registration_id: regId,
+          first_name: athlete.first_name,
+          last_name: athlete.last_name,
+          birth_year: athlete.birth_year,
+          gender: athlete.gender,
+        }))
+
+        const { error: athletesError } = await supabase
+          .from('athletes')
+          .insert(athletesToInsert)
+
+        if (athletesError) throw athletesError
       }
 
       // Success - clear error and show success message
