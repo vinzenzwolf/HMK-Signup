@@ -58,6 +58,10 @@ function AdminDashboard() {
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null)
   const [isLoadingSeasons, setIsLoadingSeasons] = useState(true)
   const [showCreateSeason, setShowCreateSeason] = useState(false)
+  const [isSeasonSelectExpanded, setIsSeasonSelectExpanded] = useState(true)
+  const [isSeasonEditExpanded, setIsSeasonEditExpanded] = useState(true)
+  const [isStatisticsExpanded, setIsStatisticsExpanded] = useState(true)
+  const [isRegistrationsExpanded, setIsRegistrationsExpanded] = useState(true)
   const [editSeasonForm, setEditSeasonForm] = useState({
     year: new Date().getFullYear(),
     event_date: '',
@@ -867,7 +871,27 @@ function AdminDashboard() {
           )}
           {/* Seasons management */}
           <div className="admin-section">
-            <h2 className="admin-section-title">Saison wählen</h2>
+            <div 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between', 
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+              onClick={() => setIsSeasonSelectExpanded(!isSeasonSelectExpanded)}
+            >
+              <h2 className="admin-section-title" style={{ margin: 0 }}>Saison wählen</h2>
+              <span style={{ 
+                fontSize: '1.25rem', 
+                transition: 'transform 0.2s',
+                transform: isSeasonSelectExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+              }}>
+                ▼
+              </span>
+            </div>
+            {isSeasonSelectExpanded && (
+            <div>
             {seasons.length === 0 ? (
               <p style={{ marginTop: '0.5rem' }}>Noch keine Saison vorhanden. Bitte neue Saison anlegen.</p>
             ) : (
@@ -961,6 +985,8 @@ function AdminDashboard() {
                   <span style={{ fontSize: '1.25rem' }}>+</span> Neue Saison
                 </button>
               </div>
+            )}
+            </div>
             )}
           </div>
 
@@ -1105,9 +1131,28 @@ function AdminDashboard() {
           )}
 
           <div className="admin-section">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+            <div 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between', 
+                gap: '1rem',
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+              onClick={() => setIsSeasonEditExpanded(!isSeasonEditExpanded)}
+            >
               <h2 className="admin-section-title" style={{ margin: 0 }}>Saison bearbeiten</h2>
+              <span style={{ 
+                fontSize: '1.25rem', 
+                transition: 'transform 0.2s',
+                transform: isSeasonEditExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+              }}>
+                ▼
+              </span>
             </div>
+            {isSeasonEditExpanded && (
+            <div>
             {selectedSeason ? (
               <form onSubmit={handleUpdateSeason} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
                 <div>
@@ -1192,11 +1237,32 @@ function AdminDashboard() {
             ) : (
               <p style={{ marginTop: '0.5rem' }}>Keine Saison ausgewählt.</p>
             )}
+            </div>
+            )}
           </div>
           {/* Statistics Section - First */}
-          {statistics && (
-            <div className="admin-section">
-            <h2 className="admin-section-title">Statistiken</h2>
+          <div className="admin-section">
+            <div 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between', 
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+              onClick={() => setIsStatisticsExpanded(!isStatisticsExpanded)}
+            >
+              <h2 className="admin-section-title" style={{ margin: 0 }}>Statistiken</h2>
+              <span style={{ 
+                fontSize: '1.25rem', 
+                transition: 'transform 0.2s',
+                transform: isStatisticsExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+              }}>
+                ▼
+              </span>
+            </div>
+            {isStatisticsExpanded && statistics && (
+            <div>
             <div className="admin-stats-grid">
               <div className="admin-stat-card admin-stat-card-rose">
                 <div className="admin-stat-value admin-stat-value-rose">
@@ -1252,18 +1318,45 @@ function AdminDashboard() {
               </div>
             )}
             </div>
-          )}
+            )}
+            {isStatisticsExpanded && !statistics && (
+              <p style={{ marginTop: '0.5rem' }}>Keine Statistiken verfügbar.</p>
+            )}
+          </div>
 
           {/* Divider */}
           {statistics && <div className="admin-divider" />}
 
           {/* Registrations List with integrated search */}
           {/* Header with search integrated */}
-          <div style={{ marginBottom: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <div className="admin-section" style={{ marginBottom: '2rem' }}>
+            <div 
+              style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                marginBottom: '1.5rem', 
+                flexWrap: 'wrap', 
+                gap: '1rem',
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+              onClick={() => setIsRegistrationsExpanded(!isRegistrationsExpanded)}
+            >
               <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.5rem', fontWeight: 700 }}>
                 Anmeldungen {searchQuery ? `(${filteredRegistrations.length} von ${registrations.length})` : `(${registrations.length})`}
               </h2>
+              <span style={{ 
+                fontSize: '1.25rem', 
+                transition: 'transform 0.2s',
+                transform: isRegistrationsExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+              }}>
+                ▼
+              </span>
+            </div>
+            {isRegistrationsExpanded && (
+            <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <button
                   onClick={() => loadRegistrations().then(() => calculateStatistics())}
@@ -1387,7 +1480,6 @@ function AdminDashboard() {
                 </button>
               )}
             </div>
-          </div>
 
           {filteredRegistrations.length === 0 ? (
             <div className="admin-empty-state">
@@ -1686,6 +1778,9 @@ function AdminDashboard() {
               })}
             </div>
           )}
+            </div>
+            )}
+          </div>
         </div>
       </div>
     </>
