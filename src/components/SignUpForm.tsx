@@ -393,6 +393,12 @@ const [childErrors, setChildErrors] = useState<
   async function saveFormData(skipNavigation = false): Promise<boolean> {
     if (isSubmitting) return false; // Prevent multiple submissions
     
+    // go to the top of the page
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    })
+
     // Validate all trainer fields
     const trainerValidation = {
       trainerName: !isNonEmpty(trainerName),
@@ -525,11 +531,6 @@ const [childErrors, setChildErrors] = useState<
       }
     } finally {
       setIsSubmitting(false);
-      // go to the top of the page
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth',
-      })
     }
   }
 
@@ -686,6 +687,13 @@ const [childErrors, setChildErrors] = useState<
             logoSrc={logoDataUrl}
             billDataUrl={invoiceBillDataUrl}
             onDownloadClick={async () => {
+              
+              // go to the top of the page
+              window.scrollTo({
+                top: 0,
+                behavior: 'smooth',
+              })
+              
               // Validate children first
               const isChildrenValid = validateChildren();
               if (!isChildrenValid) {
@@ -700,12 +708,6 @@ const [childErrors, setChildErrors] = useState<
                 setBannerMessage('Formular wurde gespeichert. Rechnung wird heruntergeladen...');
                 setBannerVariant('success');
               }
-
-              // go to the top of the page
-              window.scrollTo({
-                top: 0,
-                behavior: 'smooth',
-              })
 
               return saved;
             }}
