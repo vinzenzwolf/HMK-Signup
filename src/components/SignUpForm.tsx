@@ -525,6 +525,11 @@ const [childErrors, setChildErrors] = useState<
       }
     } finally {
       setIsSubmitting(false);
+      // go to the top of the page
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      })
     }
   }
 
@@ -695,6 +700,13 @@ const [childErrors, setChildErrors] = useState<
                 setBannerMessage('Formular wurde gespeichert. Rechnung wird heruntergeladen...');
                 setBannerVariant('success');
               }
+
+              // go to the top of the page
+              window.scrollTo({
+                top: 0,
+                behavior: 'smooth',
+              })
+
               return saved;
             }}
           />
