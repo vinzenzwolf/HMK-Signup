@@ -1,5 +1,5 @@
 import FormField from './FormField'
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect , useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './SignUpForm.css'
 import type { Child } from '../types/child';
@@ -42,197 +42,28 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
   const isEditMode = !!editToken
   const navigate = useNavigate()
   
+  // trainer states
   const [trainerName, setTrainerName] = useState(initialData?.trainerName || "");
   const [verein, setVerein] = useState(initialData?.verein || "");
   const [email, setEmail] = useState(initialData?.email || "");
   const [phoneNumber, setPhoneNumber] = useState(initialData?.phoneNumber || "");
   
+  // trainer error states
   const [trainerErrors, setTrainerErrors] = useState({
     trainerName: false,
     verein: false,
     email: false,
     phoneNumber: false,
   }); 
-  
-  type ChildErrors = {
-  vorname: boolean;
-  nachname: boolean;
-  jahrgang: boolean;
-  geschlecht: boolean;
-  duplicate: boolean;
-};
 
-const [childErrors, setChildErrors] = useState<
-  Record<string, ChildErrors>
->({});
-
-  const [bannerMessage, setBannerMessage] = useState<string | null>(null);
-  const [bannerVariant, setBannerVariant] = useState<'error' | 'info' | 'success'>('success');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [emailError, setEmailError] = useState(false);
-  // Kostenberechnung nach Initialisierung der Kinder
-
-  const allowedYears = useMemo(() => {
-    if (!seasonYear) return null
-    const y = seasonYear
-    const currentYear = new Date().getFullYear()
-    const minYear = y - 13 // ältester erlaubter Jahrgang
-    const maxYear = currentYear - 1 // keine zukünftigen Jahrgänge
-    const label = `zwischen ${minYear} und ${maxYear} (jüngere Jahrgänge sind erlaubt)`
-    return { minYear, maxYear, label }
-  }, [seasonYear])
-
-  function isNonEmpty(value: string) {
-    return value.trim().length > 0;
-  }
-
-  function isValidEmail(value: string) {
-    return /^\S+@\S+\.\S+$/.test(value);
-  }
-
-  function isValidPhoneNumber(value: string): boolean {
-    const phone = value.trim();
-
-    // + gefolgt von 7–15 Ziffern, Leerzeichen erlaubt
-    const phoneRegex = /^\+\d(?:[\d\s]{6,14}\d)$/;
-
-  return phoneRegex.test(phone);
-}
-
-  function isDuplicate(child: Child, allChildren: Child[]): boolean {
-    const normalizedVorname = child.vorname.trim().toLowerCase();
-    const normalizedNachname = child.nachname.trim().toLowerCase();
-    
-    if (!normalizedVorname || !normalizedNachname) {
-      return false; // Leere Felder sind keine Duplikate
-    }
-    
-    // Zähle, wie viele Children denselben Namen haben (außer dem aktuellen)
-    const duplicates = allChildren.filter(c => 
-      c.id !== child.id &&
-      c.vorname.trim().toLowerCase() === normalizedVorname &&
-      c.nachname.trim().toLowerCase() === normalizedNachname
-    );
-    
-    return duplicates.length > 0;
-  }
-
-  //Children States and Logic
+  //Children States
   const [children, setChildren] = useState<Child[]>(
     initialData?.children && initialData.children.length > 0
       ? initialData.children
       : [createEmptyChild()]
   );
 
-  const totalCost = useMemo(() => children.length * 15, [children.length]);
-  const clubLabel = useMemo(() => verein.trim() || 'Ihr Verein', [verein]);
-  const invoiceDate = useMemo(() => new Date(), [])
-  const invoiceDueDate = useMemo(() => {
-    if (seasonPaymentDeadline) {
-      const d = new Date(seasonPaymentDeadline)
-      if (!Number.isNaN(d.getTime())) return d
-    }
-    const date = new Date()
-    date.setDate(date.getDate() + 30)
-    return date
-  }, [seasonPaymentDeadline])
-  const [invoiceBillDataUrl, setInvoiceBillDataUrl] = useState<string | null>(null)
-  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null)
-
-  // Load logo as data URL for PDF (loads via HTTP, doesn't touch the file)
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    
-    async function loadLogoAsDataUrl() {
-      try {
-        // Use the imported URL from Vite - this will be a URL like /assets/SCL_Logo-abc123.png
-        const response = await fetch(logoSrcUrl)
-        if (!response.ok) {
-          console.warn('Logo konnte nicht geladen werden:', response.status)
-          setLogoDataUrl(null)
-          return
-        }
-        
-        const blob = await response.blob()
-        
-        // Convert blob to data URL using FileReader
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          const dataUrl = reader.result as string
-          if (dataUrl && dataUrl.startsWith('data:')) {
-            setLogoDataUrl(dataUrl)
-          } else {
-            setLogoDataUrl(null)
-          }
-        }
-        reader.onerror = () => {
-          console.warn('Fehler beim Konvertieren des Logos')
-          setLogoDataUrl(null)
-        }
-        reader.readAsDataURL(blob)
-      } catch (err) {
-        console.warn('Logo konnte nicht geladen werden:', err)
-        setLogoDataUrl(null)
-      }
-    }
-    
-    loadLogoAsDataUrl()
-  }, [])
-
-  useEffect(() => {
-    ;(async () => {
-      if (typeof globalThis === 'undefined' || (globalThis as any).Buffer) return
-      try {
-        const mod = await import('buffer')
-        if (mod?.Buffer) {
-          ;(globalThis as any).Buffer = mod.Buffer
-        }
-      } catch (err) {
-        console.error('Buffer Polyfill konnte nicht geladen werden:', err)
-      }
-    })()
-  }, [])
-
-
-  async function svgToPngDataUrl(svg: string): Promise<string | null> {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return null
-    return new Promise(resolve => {
-      try {
-        const blob = new Blob([svg], { type: 'image/svg+xml' })
-        const url = URL.createObjectURL(blob)
-        const img = new Image()
-        img.onload = () => {
-          const scale = 2 // render at 2x for better quality
-          const targetWidth = (img.naturalWidth || 840) * scale
-          const targetHeight = (img.naturalHeight || 420) * scale
-          const canvas = document.createElement('canvas')
-          canvas.width = targetWidth
-          canvas.height = targetHeight
-          const ctx = canvas.getContext('2d')
-          if (!ctx) {
-            URL.revokeObjectURL(url)
-            resolve(null)
-            return
-          }
-          ctx.imageSmoothingEnabled = true
-          ctx.imageSmoothingQuality = 'high'
-          ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
-          URL.revokeObjectURL(url)
-          resolve(canvas.toDataURL('image/png'))
-        }
-        img.onerror = () => {
-          URL.revokeObjectURL(url)
-          resolve(null)
-        }
-        img.src = url
-      } catch (err) {
-        console.error('SVG → PNG Konvertierung fehlgeschlagen:', err)
-        resolve(null)
-      }
-    })
-  }
-
-  const addChild = () => {
+   const addChild = () => {
     setChildren(prev => [...prev, createEmptyChild()]);
   };
 
@@ -321,7 +152,224 @@ const [childErrors, setChildErrors] = useState<
     });
   },
   []
-);
+  );
+
+  function validateChildren(): boolean {
+    // Validate all children
+    const newChildErrors: Record<string, ChildErrors> = {};
+    children.forEach(child => {
+      const yearNum = parseInt(child.jahrgang, 10)
+      const isYearAllowed = allowedYears
+        ? yearNum >= allowedYears.minYear && yearNum <= allowedYears.maxYear
+        : true
+      newChildErrors[child.id] = {
+        vorname: !isNonEmpty(child.vorname),
+        nachname: !isNonEmpty(child.nachname),
+        jahrgang: !/^\d{4}$/.test(child.jahrgang) || !isYearAllowed,
+        geschlecht: child.geschlecht !== 'M' && child.geschlecht !== 'W',
+        duplicate: isDuplicate(child, children),
+      };
+    });
+    setChildErrors(newChildErrors);
+    
+    // Check if there are any child errors
+    const hasChildErrors = Object.values(newChildErrors).some(childErr => 
+      Object.values(childErr).some(err => err)
+    );
+    
+    return !hasChildErrors;
+  }
+  
+  // child errors states
+  type ChildErrors = {
+  vorname: boolean;
+  nachname: boolean;
+  jahrgang: boolean;
+  geschlecht: boolean;
+  duplicate: boolean;
+  };
+
+  const [childErrors, setChildErrors] = useState<Record<string, ChildErrors>>({});
+
+
+  // registration states
+  const [savedRegistrationId, setSavedRegistrationId] = useState<string | null>(initialData?.registrationId || null)
+  const savedRegistrationIdRef = useRef<string | null>(null);
+  const isSubmittingRef = useRef(false);
+  const [savedEditToken, setSavedEditToken] = useState<string | null>(editToken || null)
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emailError, setEmailError] = useState(false);
+
+  // error banner states
+  const [bannerMessage, setBannerMessage] = useState<string | null>(null);
+  const [bannerVariant, setBannerVariant] = useState<'error' | 'info' | 'success'>('success');
+  
+  // scroll up if banner changes
+  useEffect(() => {
+    if (bannerMessage) {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      })
+    }
+  }, [bannerMessage])
+  
+  useEffect(() => {
+  console.log('SignUpForm MOUNT');
+}, []);
+
+  
+  const allowedYears = useMemo(() => {
+    if (!seasonYear) return null
+    const y = seasonYear
+    const minYear = y - 13 // ältester erlaubter Jahrgang
+    const maxYear = y - 2 // keine zukünftigen Jahrgänge
+    const label = `zwischen ${minYear} und ${maxYear} (jüngere Jahrgänge sind erlaubt)`
+    return { minYear, maxYear, label }
+  }, [seasonYear])
+
+  function isNonEmpty(value: string) {
+    return value.trim().length > 0;
+  }
+
+  function isValidEmail(value: string) {
+    return /^\S+@\S+\.\S+$/.test(value);
+  }
+
+  function isValidPhoneNumber(value: string): boolean {
+    const phone = value.trim();
+
+    // + gefolgt von 7–15 Ziffern, Leerzeichen erlaubt
+    const phoneRegex = /^\+\d(?:[\d\s]{6,14}\d)$/;
+
+    return phoneRegex.test(phone);
+  }
+
+  function isDuplicate(child: Child, allChildren: Child[]): boolean {
+    const normalizedVorname = child.vorname.trim().toLowerCase();
+    const normalizedNachname = child.nachname.trim().toLowerCase();
+    
+    if (!normalizedVorname || !normalizedNachname) {
+      return false; // Leere Felder sind keine Duplikate
+    }
+    
+    // Zähle, wie viele Children denselben Namen haben (außer dem aktuellen)
+    const duplicates = allChildren.filter(c => 
+      c.id !== child.id &&
+      c.vorname.trim().toLowerCase() === normalizedVorname &&
+      c.nachname.trim().toLowerCase() === normalizedNachname
+    );
+    
+    return duplicates.length > 0;
+  }
+
+  
+  const totalCost = useMemo(() => children.length * 15, [children.length]);
+  const clubLabel = useMemo(() => verein.trim() || 'Ihr Verein', [verein]);
+  const invoiceDate = useMemo(() => new Date(), [])
+  const invoiceDueDate = useMemo(() => {
+    if (seasonPaymentDeadline) {
+      const d = new Date(seasonPaymentDeadline)
+      if (!Number.isNaN(d.getTime())) return d
+    }
+    const date = new Date()
+    date.setDate(date.getDate() + 30)
+    return date
+  }, [seasonPaymentDeadline])
+  const [invoiceBillDataUrl, setInvoiceBillDataUrl] = useState<string | null>(null)
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null)
+
+  // Load logo as data URL for PDF (loads via HTTP, doesn't touch the file)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    async function loadLogoAsDataUrl() {
+      try {
+        // Use the imported URL from Vite - this will be a URL like /assets/SCL_Logo-abc123.png
+        const response = await fetch(logoSrcUrl)
+        if (!response.ok) {
+          console.warn('Logo konnte nicht geladen werden:', response.status)
+          setLogoDataUrl(null)
+          return
+        }
+        
+        const blob = await response.blob()
+        
+        // Convert blob to data URL using FileReader
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const dataUrl = reader.result as string
+          if (dataUrl && dataUrl.startsWith('data:')) {
+            setLogoDataUrl(dataUrl)
+          } else {
+            setLogoDataUrl(null)
+          }
+        }
+        reader.onerror = () => {
+          console.warn('Fehler beim Konvertieren des Logos')
+          setLogoDataUrl(null)
+        }
+        reader.readAsDataURL(blob)
+      } catch (err) {
+        console.warn('Logo konnte nicht geladen werden:', err)
+        setLogoDataUrl(null)
+      }
+    }
+    
+    loadLogoAsDataUrl()
+  }, [])
+
+  useEffect(() => {
+    ;(async () => {
+      if (typeof globalThis === 'undefined' || (globalThis as any).Buffer) return
+      try {
+        const mod = await import('buffer')
+        if (mod?.Buffer) {
+          ;(globalThis as any).Buffer = mod.Buffer
+        }
+      } catch (err) {
+        console.error('Buffer Polyfill konnte nicht geladen werden:', err)
+      }
+    })()
+  }, [])
+
+  async function svgToPngDataUrl(svg: string): Promise<string | null> {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return null
+    return new Promise(resolve => {
+      try {
+        const blob = new Blob([svg], { type: 'image/svg+xml' })
+        const url = URL.createObjectURL(blob)
+        const img = new Image()
+        img.onload = () => {
+          const scale = 2 // render at 2x for better quality
+          const targetWidth = (img.naturalWidth || 840) * scale
+          const targetHeight = (img.naturalHeight || 420) * scale
+          const canvas = document.createElement('canvas')
+          canvas.width = targetWidth
+          canvas.height = targetHeight
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            URL.revokeObjectURL(url)
+            resolve(null)
+            return
+          }
+          ctx.imageSmoothingEnabled = true
+          ctx.imageSmoothingQuality = 'high'
+          ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
+          URL.revokeObjectURL(url)
+          resolve(canvas.toDataURL('image/png'))
+        }
+        img.onerror = () => {
+          URL.revokeObjectURL(url)
+          resolve(null)
+        }
+        img.src = url
+      } catch (err) {
+        console.error('SVG → PNG Konvertierung fehlgeschlagen:', err)
+        resolve(null)
+      }
+    })
+  }
 
   useEffect(() => {
     ;(async () => {
@@ -364,40 +412,12 @@ const [childErrors, setChildErrors] = useState<
   }, [totalCost, clubLabel])
 
 
-  function validateChildren(): boolean {
-    // Validate all children
-    const newChildErrors: Record<string, ChildErrors> = {};
-    children.forEach(child => {
-      const yearNum = parseInt(child.jahrgang, 10)
-      const isYearAllowed = allowedYears
-        ? yearNum >= allowedYears.minYear && yearNum <= allowedYears.maxYear
-        : true
-      newChildErrors[child.id] = {
-        vorname: !isNonEmpty(child.vorname),
-        nachname: !isNonEmpty(child.nachname),
-        jahrgang: !/^\d{4}$/.test(child.jahrgang) || !isYearAllowed,
-        geschlecht: child.geschlecht !== 'M' && child.geschlecht !== 'W',
-        duplicate: isDuplicate(child, children),
-      };
-    });
-    setChildErrors(newChildErrors);
-    
-    // Check if there are any child errors
-    const hasChildErrors = Object.values(newChildErrors).some(childErr => 
-      Object.values(childErr).some(err => err)
-    );
-    
-    return !hasChildErrors;
-  }
-
   async function saveFormData(skipNavigation = false): Promise<boolean> {
     if (isSubmitting) return false; // Prevent multiple submissions
-    
-    // go to the top of the page
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth',
-    })
+
+    //
+    // 1. Validiere alle Felder
+    //
 
     // Validate all trainer fields
     const trainerValidation = {
@@ -415,10 +435,13 @@ const [childErrors, setChildErrors] = useState<
     if (hasTrainerErrors || !isChildrenValid) {
       setBannerMessage('Bitte überprüfe alle Felder und korrigiere die Fehler.');
       setBannerVariant('error');
-      return false; // ❌ ungültig → Fehler werden angezeigt
+      return false;
     }
 
-    // ✅ gültig → absenden
+    //
+    // 2. Starte Submission
+    //
+    
     setIsSubmitting(true);
     try {
       const athletes = children.map(mapChildToAthlete);
@@ -429,7 +452,7 @@ const [childErrors, setChildErrors] = useState<
         setIsSubmitting(false);
         return false;
       }
-      
+
       if (isEditMode && editToken) {
         // Prefer the ID passed from the edit page to avoid accidental re-creates
         const registrationId = initialData?.registrationId 
@@ -439,7 +462,7 @@ const [childErrors, setChildErrors] = useState<
           throw new Error('Anmeldung nicht gefunden. Bitte öffne den Bearbeitungslink erneut.');
         }
         
-        await updateRegistration(registrationId, {
+        const updateResult = await updateRegistration(registrationId, {
           guardian_name: trainerName.trim(),
           club: verein.trim() || null,
           email: email.trim(),
@@ -447,12 +470,23 @@ const [childErrors, setChildErrors] = useState<
           athletes,
           season_id: seasonId,
         });
-        
+        if (updateResult.edit_token) {
+          setSavedEditToken(updateResult.edit_token)
+        }
+
+        if (updateResult.email_sent === false) {
+          setEmailError(true);
+          setTrainerErrors(prev => ({ ...prev, email: true }));
+          setBannerMessage('Anmeldung wurde aktualisiert, aber die E-Mail konnte nicht gesendet werden. Bitte korrigieren Sie die E-Mail-Adresse.');
+          setBannerVariant('error');
+          return false;
+        }
+
         setEmailError(false); // Clear email error on success
         if (!skipNavigation) {
           setBannerMessage('Anmeldung erfolgreich aktualisiert!');
           setBannerVariant('success');
-          
+
           if (onSaveSuccess) {
             setTimeout(() => {
               onSaveSuccess();
@@ -461,6 +495,48 @@ const [childErrors, setChildErrors] = useState<
         }
         return true;
       } else {
+        
+        if (savedRegistrationIdRef.current) {
+        const result = await updateRegistration(savedRegistrationIdRef.current, {
+          guardian_name: trainerName.trim(),
+          club: verein.trim() || null,
+          email: email.trim(),
+          phone: phoneNumber.trim(),
+          athletes,
+          season_id: seasonId,
+        });
+
+        if (result.edit_token) {
+          setSavedEditToken(result.edit_token)
+        }
+        if (result.email_sent === false) {
+          setEmailError(true);
+          setTrainerErrors(prev => ({ ...prev, email: true }));
+          setBannerMessage('Anmeldung wurde aktualisiert, aber die E-Mail konnte nicht gesendet werden. Bitte korrigieren Sie die E-Mail-Adresse.');
+          setBannerVariant('error');
+          return false;
+        }
+
+        setEmailError(false); // Clear email error on success
+        if (!skipNavigation) {
+          setBannerMessage('Anmeldung erfolgreich aktualisiert!');
+          setBannerVariant('success');
+
+          const token = result.edit_token || savedEditToken
+          if (token && seasonYear) {
+            setTimeout(() => {
+              navigate(`/${seasonYear}/edit/${token}`);
+            }, 1500);
+          }
+        }
+        return true;
+      }
+        
+        
+        
+        
+        
+        
         const result = await saveRegistration({
           guardian_name: trainerName.trim(),
           club: verein.trim() || null,
@@ -469,13 +545,25 @@ const [childErrors, setChildErrors] = useState<
           athletes,
           season_id: seasonId,
         });
-        
+        savedRegistrationIdRef.current = result.id;
+        setSavedRegistrationId(result.id)
+        setSavedEditToken(result.edit_token)
+
+        if (result.email_sent === false) {
+          // Saved but email failed — keep user on form to correct address.
+          setEmailError(true);
+          setTrainerErrors(prev => ({ ...prev, email: true }));
+          setBannerMessage('Anmeldung wurde gespeichert, aber die E-Mail konnte nicht gesendet werden. Bitte korrigieren Sie die E-Mail-Adresse.');
+          setBannerVariant('error');
+          return false;
+        }
+
         setEmailError(false); // Clear email error on success
         if (!skipNavigation) {
-          // Registration is always saved, email sending is optional
+          // Registration is saved and email sent
           setBannerMessage('Anmeldung erfolgreich gespeichert! Eine E-Mail mit dem Bearbeitungslink wurde versendet. Sie werden nun zur Bearbeitungsseite weitergeleitet...');
           setBannerVariant('success');
-          
+
           // Navigate to edit page with token
           if (result.edit_token && seasonYear) {
             // Redirect after a short delay to show success message
@@ -687,29 +775,15 @@ const [childErrors, setChildErrors] = useState<
             logoSrc={logoDataUrl}
             billDataUrl={invoiceBillDataUrl}
             onDownloadClick={async () => {
-              
-              // go to the top of the page
-              window.scrollTo({
-                top: 0,
-                behavior: 'smooth',
-              })
-              
-              // Validate children first
-              const isChildrenValid = validateChildren();
-              if (!isChildrenValid) {
-                setBannerMessage('Bitte überprüfe alle Athleten-Felder und korrigiere die Fehler vor dem Download.');
-                setBannerVariant('error');
-                return false;
-              }
-              
               // Save form data before allowing download (skip navigation)
               const saved = await saveFormData(true);
-              if (saved) {
-                setBannerMessage('Formular wurde gespeichert. Rechnung wird heruntergeladen...');
-                setBannerVariant('success');
+              
+              if (!saved || emailError) {
+                return false;
               }
-
-              return saved;
+              setBannerMessage('Formular wurde gespeichert. Rechnung wird heruntergeladen...');
+              setBannerVariant('success');
+              return true;
             }}
           />
 
