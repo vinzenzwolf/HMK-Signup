@@ -728,7 +728,22 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
             </header>
 
             <ExcelTool
-                onImport={(importedChildren) => {setChildren(importedChildren);}}/>
+              onImport={(importedChildren) => {
+                setChildren(prev => {
+                  const nonEmpty = prev.filter(
+                    c => c.vorname || c.nachname || c.jahrgang
+                  );
+
+                  return [
+                    ...nonEmpty,
+                    ...importedChildren.map(child => ({
+                      ...child,
+                      id: crypto.randomUUID(),
+                    })),
+                  ];
+                });
+              }}
+            />
 
 
             {children.map((child, index) => (
