@@ -32,6 +32,7 @@ export type AthleteData = {
 export type RegistrationResult = {
   id: string
   edit_token: string
+  email_sent?: boolean
 }
 
 /**
@@ -186,9 +187,21 @@ export async function updateRegistration(
     throw new Error(`Failed to save athletes: ${athletesError.message}`)
   }
 
+  // After successful update, attempt to send the edit-link email.
+  // If sending fails, we do NOT rollback — caller will be informed via the
+  // `email_sent` flag so the UI can prompt the user to correct the address.
+  let emailSent = true
+  try {
+    await sendEditLinkEmail(data.email, registration.edit_token || '', registrationId)
+  } catch (err) {
+    console.error('Failed to send edit-link email after update:', err)
+    emailSent = false
+  }
+
   return {
     id: registrationId,
     edit_token: registration.edit_token || '',
+    email_sent: emailSent,
   }
 }
 
@@ -359,37 +372,6 @@ export async function createSeason(season: Omit<Season, 'id' | 'created_at' | 'i
   return data as Season
 }
 
-export async function setActiveSeason(seasonId: string): Promise<void> {
-  // Deactivate all
-  const { error: deactivateError } = await supabase
-    .from('seasons')
-    .update({ is_active: false })
-    .eq('is_active', true)
-
-  if (deactivateError) {
-    throw new Error(`Failed to deactivate current season: ${deactivateError.message}`)
-  }
-
-  // Activate target
-  const { error: activateError } = await supabase
-    .from('seasons')
-    .update({ is_active: true })
-    .eq('id', seasonId)
-
-  if (activateError) {
-    throw new Error(`Failed to activate season: ${activateError.message}`)
-  }
-}
-
-export function mapChildToAthlete(child: Child): AthleteData {
-  return {
-    first_name: child.vorname.trim(),
-    last_name: child.nachname.trim(),
-    birth_year: parseInt(child.jahrgang, 10),
-    gender: child.geschlecht.toLowerCase() as 'm' | 'w',
-  }
-}
-
 export function mapAthleteToChild(athlete: { first_name: string; last_name: string; birth_year: number; gender: 'm' | 'w' }): Child {
   return {
     id: crypto.randomUUID(),
@@ -397,6 +379,15 @@ export function mapAthleteToChild(athlete: { first_name: string; last_name: stri
     nachname: athlete.last_name,
     jahrgang: athlete.birth_year.toString(),
     geschlecht: athlete.gender.toUpperCase() as 'M' | 'W',
+  }
+}
+
+export function mapChildToAthlete(child: Child): AthleteData {
+  return {
+    first_name: child.vorname.trim(),
+    last_name: child.nachname.trim(),
+    birth_year: parseInt(child.jahrgang, 10) || 0,
+    gender: child.geschlecht.toLowerCase() as 'm' | 'w',
   }
 }
 
