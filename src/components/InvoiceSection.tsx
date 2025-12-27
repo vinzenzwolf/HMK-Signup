@@ -190,7 +190,7 @@ function InvoiceDocument({
             </Text>
             <Text style={[invoiceStyles.tableCell, invoiceStyles.qtyCol]}>{athleteCount}</Text>
             <Text style={[invoiceStyles.tableCell, invoiceStyles.amountCol, invoiceStyles.lastInRow]}>
-              {formatCurrency(totalAmount)}
+              {formatCurrency(15)}
             </Text>
           </View>
 
@@ -260,6 +260,12 @@ function InvoiceSection({
 
   const handleDownloadClick = async () => {
     // First validate and save if callback provided
+    // go to the top of the page
+              window.scrollTo({
+                top: 0,
+                behavior: 'smooth',
+              })
+    
     if (onDownloadClick) {
       setIsPreparingDownload(true)
       try {
