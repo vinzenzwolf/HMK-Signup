@@ -1,21 +1,21 @@
 import './SubmitButton.css';
 
-type DashedButtonProps = {
+type SubmitButtonProps = {
   label: string;
   color?: string;
   onClick: () => void;
   disabled?: boolean;
 };
 
-function DashedButton({
+function SubmitButton({
   label,
   color = '#2563eb',
   onClick,
   disabled = false,
-}: DashedButtonProps) {
+}: SubmitButtonProps) {
   return (
     <button
-      type="button"
+      type="button" // 🔥 WICHTIG: verhindert Form-Submit & Page-Reload
       className="submit-button"
       onClick={onClick}
       disabled={disabled}
@@ -30,4 +30,4 @@ function DashedButton({
   );
 }
 
-export default DashedButton;
+export default SubmitButton;
