@@ -28,21 +28,14 @@ The application is built with **React + Vite** and is connected to **Supabase** 
 ---
 
 ## Screenshots
-<img width="558" height="735" alt="Admin Dashboard" src="https://github.com/user-attachments/assets/65723fb0-7b61-4b48-b132-b1b703cac4cd" />
-
-<img width="1034" height="913" alt="Signup Page" src="https://github.com/user-attachments/assets/e8892b0c-8a37-413f-92b4-51aca92234c8" />
-
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 
-- npm or pnpm
-- A Supabase project
-- A Resend account with an API key
-
----
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://github.com/user-attachments/assets/65723fb0-7b61-4b48-b132-b1b703cac4cd" height="500" />
+    </td>
+    <td align="center">
+      <img src="https://github.com/user-attachments/assets/e8892b0c-8a37-413f-92b4-51aca92234c8" height="500" />
+    </td>
+  </tr>
+</table>
 
