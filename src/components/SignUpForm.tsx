@@ -276,6 +276,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
     return new Date() > deadline
   }, [seasonSignupDeadline])
   const isEditingLocked = isEditMode && isSignupDeadlinePassed
+  const isRegistrationLocked = !isEditMode && isSignupDeadlinePassed
   const invoiceDueDate = useMemo(() => {
     if (seasonPaymentDeadline) {
       const d = new Date(seasonPaymentDeadline)
@@ -650,6 +651,12 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
               variant="info"
             />
           )}
+          {isRegistrationLocked && (
+            <InformationBanner
+              message="Der Anmeldeschluss ist vorbei. Neue Anmeldungen sind nicht mehr möglich."
+              variant="info"
+            />
+          )}
           {bannerMessage && (
             <InformationBanner 
               message={bannerMessage} 
@@ -669,7 +676,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
                 placeholder='Max Mustermann'
                 value= {trainerName}
                 error={trainerErrors.trainerName}
-                disabled={isEditMode}
+                disabled={isEditMode || isRegistrationLocked}
                 onChange={(e) => {
                   const value = e.target.value;
                   setTrainerName(value)
@@ -687,7 +694,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
                 placeholder='SC Liestal'
                 value= {verein}
                 error={trainerErrors.verein}
-                disabled={isEditMode}
+                disabled={isEditMode || isRegistrationLocked}
                 onChange={(e) => {
                   const value = e.target.value;
                   setVerein(value)
@@ -705,7 +712,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
                 placeholder='max@scl-athletics.ch'
                 value = {email}
                 error={trainerErrors.email}
-                disabled={isEditingLocked || (isEditMode && !emailError)}
+                disabled={isRegistrationLocked || isEditingLocked || (isEditMode && !emailError)}
                 onChange={(e) => {
                   const value = e.target.value;
                   setEmail(value)
@@ -724,7 +731,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
                 placeholder='+41 78 882 26 50'
                 value={phoneNumber}
                 error={trainerErrors.phoneNumber}
-                disabled={isEditMode}
+                disabled={isEditMode || isRegistrationLocked}
                 onChange={(e) => {
                   const value = e.target.value;
                   setPhoneNumber(value)
@@ -743,7 +750,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
             </header>
 
             <ExcelTool
-              disabled={isEditingLocked}
+              disabled={isEditingLocked || isRegistrationLocked}
               onImport={(importedChildren) => {
                 setChildren(prev => {
                   const nonEmpty = prev.filter(
@@ -771,7 +778,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
                 onRemove={removeChild}
                 disableRemove={children.length === 1}
                 errors={childErrors[child.id]}
-                disabled={isEditingLocked}
+                disabled={isEditingLocked || isRegistrationLocked}
               />
             ))}
 
@@ -780,7 +787,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
               label="+ füge eine weitere Athlet/in hinzu"
               color="#4C1D95"
               onClick={addChild}
-              disabled={isEditingLocked}
+              disabled={isEditingLocked || isRegistrationLocked}
               />
             </div>
             
@@ -793,7 +800,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
               label={isSubmitting ? "Wird gespeichert..." : "Anmeldung speichern"}
               color="#4C1D95"
               onClick={handleSubmit}
-              disabled={isSubmitting || isEditingLocked}
+              disabled={isSubmitting || isEditingLocked || isRegistrationLocked}
               />
             </div>
           </section>
@@ -808,6 +815,11 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
             logoSrc={logoDataUrl}
             billDataUrl={invoiceBillDataUrl}
             onDownloadClick={async () => {
+              if (isRegistrationLocked) {
+                setBannerMessage('Der Anmeldeschluss ist vorbei. Neue Anmeldungen sind nicht mehr möglich.')
+                setBannerVariant('error')
+                return false
+              }
               if (isEditMode && isSignupDeadlinePassed) {
                 setBannerMessage('Rechnung wird heruntergeladen...')
                 setBannerVariant('success')
