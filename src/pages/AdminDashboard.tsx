@@ -332,9 +332,12 @@ function AdminDashboard() {
 
     const header = ['Name', 'Vorname', 'Jahrgang', 'Verein', 'Geschlecht']
 
+    const csvDelimiter = ';'
+    const csvNewline = '\r\n'
+
     const escapeCsv = (value: string | number | null | undefined) => {
       const str = (value ?? '').toString()
-      if (/[",\n]/.test(str)) {
+      if (/[";\r\n]/.test(str)) {
         return `"${str.replace(/"/g, '""')}"`
       }
       return str
@@ -350,7 +353,10 @@ function AdminDashboard() {
       ])
     )
 
-    const csv = [header, ...rows].map(row => row.map(escapeCsv).join(',')).join('\n')
+    const csvBody = [header, ...rows]
+      .map(row => row.map(escapeCsv).join(csvDelimiter))
+      .join(csvNewline)
+    const csv = `\uFEFF${csvBody}`
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
