@@ -6,9 +6,10 @@ import './ExcelTool.css'
 
 type ExcelToolProps = {
     onImport: (children: Child[]) => void;
+    disabled?: boolean;
 };
 
-function ExcelTool({ onImport }: ExcelToolProps){
+function ExcelTool({ onImport, disabled = false }: ExcelToolProps){
 
 
     function downloadTemplate() {
@@ -33,6 +34,7 @@ function ExcelTool({ onImport }: ExcelToolProps){
                     <DashedButton
                     label='Excel-Vorlage herunterladen'
                     onClick= {() => downloadTemplate()}
+                    disabled={disabled}
                     />
 
                     <input
@@ -40,6 +42,7 @@ function ExcelTool({ onImport }: ExcelToolProps){
                         accept=".xlsx,.xls,.csv"
                         ref={fileInputRef}
                         hidden
+                        disabled={disabled}
                         onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
@@ -53,6 +56,7 @@ function ExcelTool({ onImport }: ExcelToolProps){
                     <DashedButton
                         label="Excel-Datei importieren"
                         onClick={() => fileInputRef.current?.click()}
+                        disabled={disabled}
                     />
                 </div>
 

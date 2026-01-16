@@ -9,6 +9,7 @@ type SelectFieldProps = {
   onChange: (value: Gender) => void;
   required?: boolean;
   error?: boolean;
+  disabled?: boolean;
 };
 
 function SelectField({
@@ -19,6 +20,7 @@ function SelectField({
   onChange,
   required = false,
   error = false,
+  disabled = false,
 }: SelectFieldProps) {
   return (
     <label className="formField">
@@ -29,6 +31,7 @@ function SelectField({
         value={value}
         required={required}
         onChange={(e) => onChange(e.target.value as Gender)}
+        disabled={disabled}
         className={error ? 'input-error' : ''}
       >
         <option value="M">Männlich</option>

@@ -150,6 +150,7 @@ function SignupPage() {
           editToken={token}
           seasonId={season?.id}
           seasonYear={season?.year}
+          seasonSignupDeadline={season?.signup_deadline}
           seasonPaymentDeadline={season?.payment_deadline}
           onSaveSuccess={() => {
             // Bei Bearbeitung: auf der Seite bleiben, damit der editToken erhalten bleibt

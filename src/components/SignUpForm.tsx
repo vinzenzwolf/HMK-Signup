@@ -24,6 +24,7 @@ type SignUpFormProps = {
   editToken?: string
   seasonId?: string
   seasonYear?: number
+  seasonSignupDeadline?: string | null
   seasonPaymentDeadline?: string | null
   onSaveSuccess?: () => void
 }
@@ -38,7 +39,7 @@ function createEmptyChild(): Child {
   };
 }
 
-function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYear, seasonPaymentDeadline }: SignUpFormProps = {}) {
+function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYear, seasonSignupDeadline, seasonPaymentDeadline }: SignUpFormProps = {}) {
   const isEditMode = !!editToken
   const navigate = useNavigate()
   
@@ -267,6 +268,14 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
   const totalCost = useMemo(() => children.length * 15, [children.length]);
   const clubLabel = useMemo(() => verein.trim() || 'Ihr Verein', [verein]);
   const invoiceDate = useMemo(() => new Date(), [])
+  const isSignupDeadlinePassed = useMemo(() => {
+    if (!seasonSignupDeadline) return false
+    const deadline = new Date(seasonSignupDeadline)
+    if (Number.isNaN(deadline.getTime())) return false
+    deadline.setHours(23, 59, 59, 999)
+    return new Date() > deadline
+  }, [seasonSignupDeadline])
+  const isEditingLocked = isEditMode && isSignupDeadlinePassed
   const invoiceDueDate = useMemo(() => {
     if (seasonPaymentDeadline) {
       const d = new Date(seasonPaymentDeadline)
@@ -629,9 +638,15 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
   return (
     <>
         <form className="signUpForm">
-          {isEditMode && (
+          {isEditMode && !isEditingLocked && (
             <InformationBanner 
               message="Sie bearbeiten Ihre Anmeldung. Bitte speichern Sie Ihre Änderungen." 
+              variant="info"
+            />
+          )}
+          {isEditingLocked && (
+            <InformationBanner
+              message="Der Anmeldeschluss ist vorbei. Änderungen sind nicht mehr möglich, die Rechnung kann weiterhin heruntergeladen werden."
               variant="info"
             />
           )}
@@ -690,7 +705,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
                 placeholder='max@scl-athletics.ch'
                 value = {email}
                 error={trainerErrors.email}
-                disabled={isEditMode && !emailError}
+                disabled={isEditingLocked || (isEditMode && !emailError)}
                 onChange={(e) => {
                   const value = e.target.value;
                   setEmail(value)
@@ -728,6 +743,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
             </header>
 
             <ExcelTool
+              disabled={isEditingLocked}
               onImport={(importedChildren) => {
                 setChildren(prev => {
                   const nonEmpty = prev.filter(
@@ -755,6 +771,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
                 onRemove={removeChild}
                 disableRemove={children.length === 1}
                 errors={childErrors[child.id]}
+                disabled={isEditingLocked}
               />
             ))}
 
@@ -763,6 +780,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
               label="+ füge eine weitere Athlet/in hinzu"
               color="#4C1D95"
               onClick={addChild}
+              disabled={isEditingLocked}
               />
             </div>
             
@@ -775,7 +793,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
               label={isSubmitting ? "Wird gespeichert..." : "Anmeldung speichern"}
               color="#4C1D95"
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isEditingLocked}
               />
             </div>
           </section>
@@ -790,6 +808,11 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
             logoSrc={logoDataUrl}
             billDataUrl={invoiceBillDataUrl}
             onDownloadClick={async () => {
+              if (isEditMode && isSignupDeadlinePassed) {
+                setBannerMessage('Rechnung wird heruntergeladen...')
+                setBannerVariant('success')
+                return true
+              }
               // Save form data before allowing download (skip navigation)
               const saved = await saveFormData(true);
               

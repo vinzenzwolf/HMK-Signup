@@ -23,6 +23,7 @@ type ChildCardProps = {
   onRemove: (id: string) => void;
   disableRemove: boolean;
   errors?: ChildErrors;
+  disabled?: boolean;
 };
 
 const ChildCard = memo(function ChildCard({
@@ -32,6 +33,7 @@ const ChildCard = memo(function ChildCard({
   onRemove,
   disableRemove,
   errors,
+  disabled = false,
 }: ChildCardProps) {
     return (
     <article className="child-card">
@@ -46,7 +48,7 @@ const ChildCard = memo(function ChildCard({
             className='remove-button'
             type="button"
             onClick={() => onRemove(child.id)}
-            disabled={disableRemove}
+            disabled={disableRemove || disabled}
             >
             Entfernen
             </button>
@@ -59,6 +61,7 @@ const ChildCard = memo(function ChildCard({
                 label="Vorname *"
                 value={child.vorname}
                 error={errors?.vorname || errors?.duplicate}
+                disabled={disabled}
                 onChange={(e) =>
                 onChange(child.id, 'vorname', e.target.value)
                 }
@@ -70,6 +73,7 @@ const ChildCard = memo(function ChildCard({
                 label="Nachname *"
                 value={child.nachname}
                 error={errors?.nachname || errors?.duplicate}
+                disabled={disabled}
                 onChange={(e) =>
                 onChange(child.id, 'nachname', e.target.value)
                 }
@@ -83,6 +87,7 @@ const ChildCard = memo(function ChildCard({
                 value={child.jahrgang}
                 error={errors?.jahrgang}
                 max={new Date().getFullYear() - 1}
+                disabled={disabled}
                 onChange={(e) =>
                 onChange(child.id, 'jahrgang', e.target.value)
                 }
@@ -94,6 +99,7 @@ const ChildCard = memo(function ChildCard({
                 label="Geschlecht *"
                 value={child.geschlecht}
                 error={errors?.geschlecht}
+                disabled={disabled}
                 onChange={(value) =>
                     onChange(child.id, 'geschlecht', value)
                 }
