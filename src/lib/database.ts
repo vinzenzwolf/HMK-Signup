@@ -107,7 +107,7 @@ export async function updateRegistration(
   // `email_sent` flag so the UI can prompt the user to correct the address.
   let emailSent = true
   try {
-    await sendEditLinkEmail(data.email, registration.edit_token, registration.season_id)
+    await sendEditLinkEmail(data.email, registration.edit_token)
   } catch (err) {
     console.error('Failed to send edit-link email after update:', err)
     emailSent = false
@@ -140,7 +140,7 @@ export async function saveRegistration(data: RegistrationData): Promise<Registra
   // Try to send email with edit link - if this fails, registration is still saved
   // but we throw the error so the UI can handle it (e.g., allow user to correct email)
   try {
-    await sendEditLinkEmail(data.email, registration.edit_token, registration.season_id)
+    await sendEditLinkEmail(data.email, registration.edit_token)
   } catch (error) {
     console.error('Failed to send email, but registration was saved:', error)
     // Re-throw email errors so the UI can handle them
