@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import InformationBanner from '../components/InformationBanner'
 import './SignupPage.css'
@@ -85,7 +84,6 @@ function AdminDashboard() {
     payment_deadline: '',
     is_active: false,
   })
-  const navigate = useNavigate()
   const selectedSeason = useMemo(
     () => seasons.find((s) => s.id === selectedSeasonId) || null,
     [seasons, selectedSeasonId]
@@ -821,11 +819,6 @@ function AdminDashboard() {
     }
   }
 
-  async function handleLogout() {
-    await supabase.auth.signOut()
-    navigate('/admin/login')
-  }
-
   function formatDate(dateString: string) {
     const date = new Date(dateString)
     return date.toLocaleDateString('de-CH', {
@@ -966,25 +959,6 @@ function AdminDashboard() {
 
   return (
     <>
-      <div className="title">
-        <div className="admin-title-container">
-          <div className="admin-title-content">
-            <h1 className="admin-title-h1">
-              Admin Dashboard
-            </h1>
-            <p className="admin-title-p">
-              Übersicht aller Anmeldungen und Statistiken
-            </p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="admin-logout-button"
-          >
-            Abmelden
-          </button>
-        </div>
-      </div>
-
       <div className="form">
         {/* Main Container with Statistics and Registrations */}
         <div className="admin-container">

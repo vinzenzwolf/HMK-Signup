@@ -1,0 +1,252 @@
+.service-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  gap: 1rem;
+}
+
+.service-status-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.service-status-body {
+  margin-top: 1.5rem;
+}
+
+.service-status-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.service-status-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.service-status-toolbar button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  transform: none;
+}
+
+.service-status-updated {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.service-status-group-title {
+  margin: 0 0 0.75rem 0;
+  color: #334155;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.service-status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.service-status-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1.25rem;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background-color: #f8fafc;
+}
+
+.service-status-row-down {
+  border-color: #fca5a5;
+  background-color: #fef2f2;
+}
+
+.service-status-row-degraded {
+  border-color: #fcd34d;
+  background-color: #fffbeb;
+}
+
+.service-status-dot {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.service-status-dot-ok {
+  background-color: #16a34a;
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.15);
+}
+
+.service-status-dot-degraded {
+  background-color: #d97706;
+  box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.15);
+}
+
+.service-status-dot-down {
+  background-color: #dc2626;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.15);
+}
+
+.service-status-dot-loading {
+  background-color: #94a3b8;
+}
+
+.service-status-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.service-status-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.service-status-name a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(15, 23, 42, 0.25);
+  text-underline-offset: 3px;
+}
+
+.service-status-description {
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.service-status-detail {
+  color: #475569;
+  font-size: 0.875rem;
+  margin-top: 0.125rem;
+  overflow-wrap: anywhere;
+}
+
+.service-status-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.service-status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.service-status-badge-ok {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.service-status-badge-degraded {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.service-status-badge-down {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.service-status-badge-loading {
+  background-color: #e2e8f0;
+  color: #475569;
+}
+
+.service-status-latency {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 600px) {
+  .service-status-row {
+    padding: 0.75rem 1rem;
+    gap: 0.75rem;
+  }
+}
+
+.resend-usage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.resend-usage {
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background-color: #f8fafc;
+}
+
+.resend-usage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.5rem;
+}
+
+.resend-usage-label {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.resend-usage-value {
+  color: #0f172a;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.resend-usage-track {
+  height: 8px;
+  border-radius: 999px;
+  background-color: #e2e8f0;
+  overflow: hidden;
+}
+
+.resend-usage-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s;
+}
+
+.resend-usage-fill-ok {
+  background-color: #16a34a;
+}
+
+.resend-usage-fill-degraded {
+  background-color: #d97706;
+}
+
+.resend-usage-fill-down {
+  background-color: #dc2626;
+}
+
+.resend-usage-hint {
+  margin-top: 0.5rem;
+  color: #64748b;
+  font-size: 0.8125rem;
+}
