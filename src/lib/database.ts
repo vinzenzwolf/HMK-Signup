@@ -35,21 +35,6 @@ export type RegistrationResult = {
   email_sent?: boolean
 }
 
-/**
- * Makes the registration ID URL-safe by encoding it as base64url
- * This ensures the UUID is safe to use in URLs while maintaining security
- */
-function makeSecureEditToken(registrationId: string): string {
-  // Convert UUID to base64url for URL safety
-  // Remove dashes and convert to base64url
-  const uuidWithoutDashes = registrationId.replace(/-/g, '')
-  const base64 = btoa(uuidWithoutDashes)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '')
-  return base64
-}
-
 export type RegistrationWithAthletes = {
   id: string
   guardian_name: string
@@ -67,140 +52,70 @@ export type RegistrationWithAthletes = {
   }>
 }
 
-/**
- * Loads a registration by edit token
- */
-export async function loadRegistrationByToken(editToken: string): Promise<RegistrationWithAthletes | null> {
-  const { data: registration, error } = await supabase
-    .from('registrations')
-    .select('*')
-    .eq('edit_token', editToken)
-    .single()
+type RegistrationRpcResult = {
+  id: string
+  edit_token: string
+  season_id: string | null
+}
 
-  if (error || !registration) {
-    return null
-  }
-
-  // Load athletes
-  const { data: athletes, error: athletesError } = await supabase
-    .from('athletes')
-    .select('*')
-    .eq('registration_id', registration.id)
-    .order('created_at', { ascending: true })
-
-  if (athletesError) {
-    throw new Error(`Failed to load athletes: ${athletesError.message}`)
-  }
-
+// Öffentliche Zugriffe laufen über RPC-Funktionen in der Datenbank, weil die Tabellen
+// per Row Level Security nur für Admins direkt zugänglich sind.
+function toRpcParams(data: RegistrationData) {
   return {
-    id: registration.id,
-    guardian_name: registration.guardian_name,
-    club: registration.club,
-    email: registration.email,
-    phone: registration.phone,
-    created_at: registration.created_at,
-    season_id: registration.season_id,
-    athletes: athletes || [],
+    p_guardian_name: data.guardian_name,
+    p_club: data.club || null,
+    p_email: data.email,
+    p_phone: data.phone,
+    p_athletes: data.athletes,
   }
 }
 
 /**
- * Updates an existing registration
+ * Loads a registration by edit token
+ */
+export async function loadRegistrationByToken(editToken: string): Promise<RegistrationWithAthletes | null> {
+  const { data, error } = await supabase.rpc('get_registration_by_token', { p_edit_token: editToken })
+
+  if (error) {
+    throw new Error(`Failed to load registration: ${error.message}`)
+  }
+
+  return (data as RegistrationWithAthletes | null) ?? null
+}
+
+/**
+ * Updates an existing registration, identified by its edit token
  */
 export async function updateRegistration(
-  registrationId: string,
+  editToken: string,
   data: RegistrationData
 ): Promise<RegistrationResult> {
-  // Prevent edits after signup deadline
-  const { data: registration, error: registrationLookupError } = await supabase
-    .from('registrations')
-    .select('season_id, edit_token')
-    .eq('id', registrationId)
-    .maybeSingle()
+  // Deadline is enforced in the database function
+  const { data: result, error } = await supabase.rpc('update_registration_by_token', {
+    p_edit_token: editToken,
+    ...toRpcParams(data),
+  })
 
-  if (registrationLookupError || !registration) {
-    throw new Error('Anmeldung nicht gefunden.')
+  if (error || !result) {
+    throw new Error(error?.message || 'Anmeldung konnte nicht aktualisiert werden.')
   }
 
-  if (registration.season_id) {
-    const { data: season, error: seasonError } = await supabase
-      .from('seasons')
-      .select('signup_deadline')
-      .eq('id', registration.season_id)
-      .maybeSingle()
-
-    if (seasonError) {
-      throw new Error(`Anmeldeschluss konnte nicht geprüft werden: ${seasonError.message}`)
-    }
-
-    if (season?.signup_deadline) {
-      const signupDeadline = new Date(season.signup_deadline)
-      // Allow edits until end of the signup day
-      signupDeadline.setHours(23, 59, 59, 999)
-
-      if (new Date() > signupDeadline) {
-        throw new Error('Änderungen sind nach dem Anmeldeschluss nicht mehr möglich.')
-      }
-    }
-  }
-
-  // Update the registration
-  const { error: updateError } = await supabase
-    .from('registrations')
-    .update({
-      guardian_name: data.guardian_name,
-      club: data.club || null,
-      email: data.email,
-      phone: data.phone,
-      ...(data.season_id ? { season_id: data.season_id } : {}),
-    })
-    .eq('id', registrationId)
-
-  if (updateError) {
-    throw new Error(`Failed to update registration: ${updateError.message}`)
-  }
-
-  // Delete existing athletes
-  const { error: deleteError } = await supabase
-    .from('athletes')
-    .delete()
-    .eq('registration_id', registrationId)
-
-  if (deleteError) {
-    throw new Error(`Failed to delete existing athletes: ${deleteError.message}`)
-  }
-
-  // Insert new athletes
-  const athletesToInsert = data.athletes.map(athlete => ({
-    registration_id: registrationId,
-    first_name: athlete.first_name,
-    last_name: athlete.last_name,
-    birth_year: athlete.birth_year,
-    gender: athlete.gender,
-  }))
-
-  const { error: athletesError } = await supabase
-    .from('athletes')
-    .insert(athletesToInsert)
-
-  if (athletesError) {
-    throw new Error(`Failed to save athletes: ${athletesError.message}`)
-  }
+  const registration = result as RegistrationRpcResult
 
   // After successful update, attempt to send the edit-link email.
   // If sending fails, we do NOT rollback — caller will be informed via the
   // `email_sent` flag so the UI can prompt the user to correct the address.
   let emailSent = true
   try {
-    await sendEditLinkEmail(data.email, registration.edit_token || '', registrationId)
+    await sendEditLinkEmail(data.email, registration.edit_token, registration.season_id)
   } catch (err) {
     console.error('Failed to send edit-link email after update:', err)
     emailSent = false
   }
 
   return {
-    id: registrationId,
-    edit_token: registration.edit_token || '',
+    id: registration.id,
+    edit_token: registration.edit_token,
     email_sent: emailSent,
   }
 }
@@ -209,85 +124,23 @@ export async function saveRegistration(data: RegistrationData): Promise<Registra
   if (!data.season_id) {
     throw new Error('Season ist erforderlich, um eine Anmeldung zu speichern.')
   }
-  
-  const { data: season, error: seasonError } = await supabase
-    .from('seasons')
-    .select('signup_deadline')
-    .eq('id', data.season_id)
-    .maybeSingle()
 
-  if (seasonError) {
-    throw new Error(`Anmeldeschluss konnte nicht geprüft werden: ${seasonError.message}`)
+  // Registration, athletes and edit token are created atomically; the deadline is checked in the database
+  const { data: result, error } = await supabase.rpc('create_registration', {
+    p_season_id: data.season_id,
+    ...toRpcParams(data),
+  })
+
+  if (error || !result) {
+    throw new Error(error?.message || 'Anmeldung konnte nicht gespeichert werden.')
   }
 
-  if (season?.signup_deadline) {
-    const signupDeadline = new Date(season.signup_deadline)
-    signupDeadline.setHours(23, 59, 59, 999)
-
-    if (new Date() > signupDeadline) {
-      throw new Error('Anmeldung ist nach dem Anmeldeschluss nicht mehr möglich.')
-    }
-  }
-
-  // First, insert the registration (ID will be auto-generated by database)
-  const { data: registration, error: registrationError } = await supabase
-    .from('registrations')
-    .insert({
-      guardian_name: data.guardian_name,
-      club: data.club || null,
-      email: data.email,
-      phone: data.phone,
-      season_id: data.season_id,
-    })
-    .select()
-    .single()
-
-  if (registrationError) {
-    throw new Error(`Failed to save registration: ${registrationError.message}`)
-  }
-
-  if (!registration) {
-    throw new Error('Failed to save registration: No data returned')
-  }
-
-  // Use the registration ID as edit token, but make it URL-safe
-  const editToken = makeSecureEditToken(registration.id)
-  
-  // Update the registration with the secure edit token
-  const { error: updateError } = await supabase
-    .from('registrations')
-    .update({ edit_token: editToken })
-    .eq('id', registration.id)
-
-  if (updateError) {
-    // Rollback: delete the registration if we can't set the token
-    await supabase.from('registrations').delete().eq('id', registration.id)
-    throw new Error(`Failed to set edit token: ${updateError.message}`)
-  }
-
-  // Then, insert all athletes with the registration_id
-  const athletesToInsert = data.athletes.map(athlete => ({
-    registration_id: registration.id,
-    first_name: athlete.first_name,
-    last_name: athlete.last_name,
-    birth_year: athlete.birth_year,
-    gender: athlete.gender,
-  }))
-
-  const { error: athletesError } = await supabase
-    .from('athletes')
-    .insert(athletesToInsert)
-
-  if (athletesError) {
-    // Rollback: delete the registration if we can't save athletes
-    await supabase.from('registrations').delete().eq('id', registration.id)
-    throw new Error(`Failed to save athletes: ${athletesError.message}`)
-  }
+  const registration = result as RegistrationRpcResult
 
   // Try to send email with edit link - if this fails, registration is still saved
   // but we throw the error so the UI can handle it (e.g., allow user to correct email)
   try {
-    await sendEditLinkEmail(data.email, editToken, registration.id)
+    await sendEditLinkEmail(data.email, registration.edit_token, registration.season_id)
   } catch (error) {
     console.error('Failed to send email, but registration was saved:', error)
     // Re-throw email errors so the UI can handle them
@@ -304,7 +157,7 @@ export async function saveRegistration(data: RegistrationData): Promise<Registra
 
   return {
     id: registration.id,
-    edit_token: editToken,
+    edit_token: registration.edit_token,
   }
 }
 

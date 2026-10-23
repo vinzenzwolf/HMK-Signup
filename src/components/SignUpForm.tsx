@@ -9,7 +9,7 @@ import SubmitButton from './SubmitButton';
 import ExcelTool from './ExcelTool';
 import InformationBanner from './InformationBanner';
 import InvoiceSection from './InvoiceSection';
-import { saveRegistration, updateRegistration, loadRegistrationByToken, mapChildToAthlete } from '../lib/database';
+import { saveRegistration, updateRegistration, mapChildToAthlete } from '../lib/database';
 import logoSrcUrl from '../assets/SCL_Logo.png';
 
 type SignUpFormProps = {
@@ -194,9 +194,8 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
 
 
   // registration states
-  const [savedRegistrationId, setSavedRegistrationId] = useState<string | null>(initialData?.registrationId || null)
+  const [, setSavedRegistrationId] = useState<string | null>(initialData?.registrationId || null)
   const savedRegistrationIdRef = useRef<string | null>(null);
-  const isSubmittingRef = useRef(false);
   const [savedEditToken, setSavedEditToken] = useState<string | null>(editToken || null)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailError, setEmailError] = useState(false);
@@ -464,15 +463,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
       }
 
       if (isEditMode && editToken) {
-        // Prefer the ID passed from the edit page to avoid accidental re-creates
-        const registrationId = initialData?.registrationId 
-          ?? (await loadRegistrationByToken(editToken))?.id;
-
-        if (!registrationId) {
-          throw new Error('Anmeldung nicht gefunden. Bitte öffne den Bearbeitungslink erneut.');
-        }
-        
-        const updateResult = await updateRegistration(registrationId, {
+        const updateResult = await updateRegistration(editToken, {
           guardian_name: trainerName.trim(),
           club: verein.trim() || null,
           email: email.trim(),
@@ -506,8 +497,8 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
         return true;
       } else {
         
-        if (savedRegistrationIdRef.current) {
-        const result = await updateRegistration(savedRegistrationIdRef.current, {
+        if (savedRegistrationIdRef.current && savedEditToken) {
+        const result = await updateRegistration(savedEditToken, {
           guardian_name: trainerName.trim(),
           club: verein.trim() || null,
           email: email.trim(),

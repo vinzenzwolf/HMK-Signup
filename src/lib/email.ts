@@ -3,7 +3,7 @@ import { supabase } from './supabase'
 export const sendEditLinkEmail = async (
   email: string,
   token: string,
-  _registrationId: string
+  seasonId: string | null
 ): Promise<string> => {
   const envBaseUrl =
     typeof import.meta !== 'undefined' && (import.meta as any).env
@@ -26,17 +26,11 @@ export const sendEditLinkEmail = async (
   let paymentDeadlineText: string | null = null
 
   try {
-    const { data: registration } = await supabase
-      .from('registrations')
-      .select('season_id')
-      .eq('id', _registrationId)
-      .maybeSingle()
-
-    if (registration?.season_id) {
+    if (seasonId) {
       const { data: season } = await supabase
         .from('seasons')
         .select('event_number, year, signup_deadline, payment_deadline')
-        .eq('id', registration.season_id)
+        .eq('id', seasonId)
         .maybeSingle()
 
       if (season) {
