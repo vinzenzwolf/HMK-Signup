@@ -1,6 +1,7 @@
 import './App.css'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import SignupPage from './pages/SignupPage'
+import HelperSignupPage from './pages/HelperSignupPage'
 import AdminLogin from './pages/AdminLogin'
 import AdminLayout from './pages/AdminLayout'
 import AdminDashboard from './pages/AdminDashboard'
@@ -31,6 +32,8 @@ function App() {
               <Route path="helfer" element={<AdminHelfer />} />
               <Route path="system" element={<AdminSystem />} />
             </Route>
+            <Route path="/helfer" element={<HelperSignupPage />} />
+            <Route path="/:year/helfer" element={<HelperSignupPage />} />
             <Route path="/:year/edit/:token" element={<SignupPage />} />
             <Route path="/:year" element={<SignupPage />} />
             <Route path="/" element={<SignupPage />} />

@@ -1,186 +1,380 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import InformationBanner from '../components/InformationBanner'
+import { listSeasons, type Season } from '../lib/database'
+import {
+  INTEREST_LABELS,
+  availabilityLabel,
+  createHelperForm,
+  deleteHelperSignup,
+  helperSignupLink,
+  loadHelperForm,
+  loadHelperSignups,
+  updateHelperForm,
+  type HelperForm,
+  type HelperSignup,
+} from '../lib/helpers'
+import * as XLSX from 'xlsx'
 import './AdminHelfer.css'
 
-// Beispieldaten – werden ersetzt, sobald die Helferanmeldung an Supabase angebunden ist
-type Shift = {
-  id: string
-  task: string
-  start: string
-  end: string
-  needed: number
-}
-
-type Helper = {
-  id: string
-  name: string
-  club: string
-  email: string
-  shiftIds: string[]
-}
-
-const MOCK_SHIFTS: Shift[] = [
-  { id: 's1', task: 'Aufbau Halle', start: '07:00', end: '08:30', needed: 6 },
-  { id: 's2', task: 'Startnummernausgabe', start: '08:00', end: '10:00', needed: 3 },
-  { id: 's3', task: 'Kampfgericht Sprint', start: '09:00', end: '12:00', needed: 4 },
-  { id: 's4', task: 'Kampfgericht Weitsprung', start: '09:00', end: '12:00', needed: 4 },
-  { id: 's5', task: 'Kampfgericht Kugelstossen', start: '12:30', end: '15:30', needed: 3 },
-  { id: 's6', task: 'Festwirtschaft', start: '10:00', end: '14:00', needed: 5 },
-  { id: 's7', task: 'Rangverkündigung', start: '15:30', end: '16:30', needed: 2 },
-  { id: 's8', task: 'Abbau Halle', start: '16:30', end: '18:00', needed: 6 },
-]
-
-const MOCK_HELPERS: Helper[] = [
-  { id: 'h1', name: 'Anna Meier', club: 'SC Liestal', email: 'anna.meier@example.com', shiftIds: ['s1', 's3'] },
-  { id: 'h2', name: 'Marco Keller', club: 'SC Liestal', email: 'marco.keller@example.com', shiftIds: ['s3', 's8'] },
-  { id: 'h3', name: 'Laura Schmid', club: 'TV Pratteln', email: 'laura.schmid@example.com', shiftIds: ['s2'] },
-  { id: 'h4', name: 'Thomas Weber', club: 'LV Frenke', email: 'thomas.weber@example.com', shiftIds: ['s4', 's5'] },
-  { id: 'h5', name: 'Sarah Brunner', club: 'SC Liestal', email: 'sarah.brunner@example.com', shiftIds: ['s6'] },
-  { id: 'h6', name: 'David Frei', club: 'TV Sissach', email: 'david.frei@example.com', shiftIds: ['s1', 's8'] },
-  { id: 'h7', name: 'Nina Huber', club: 'SC Liestal', email: 'nina.huber@example.com', shiftIds: ['s6', 's7'] },
-  { id: 'h8', name: 'Lukas Graf', club: 'LV Frenke', email: 'lukas.graf@example.com', shiftIds: ['s4'] },
-  { id: 'h9', name: 'Mia Roth', club: 'TV Pratteln', email: 'mia.roth@example.com', shiftIds: ['s2', 's3'] },
-  { id: 'h10', name: 'Jonas Baumann', club: 'SC Liestal', email: 'jonas.baumann@example.com', shiftIds: ['s1', 's5', 's8'] },
-]
-
-const shiftById = new Map(MOCK_SHIFTS.map((shift) => [shift.id, shift]))
+const formatDate = (value: string) =>
+  new Date(value).toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
 function AdminHelfer() {
-  const [searchQuery, setSearchQuery] = useState('')
+  const [seasons, setSeasons] = useState<Season[]>([])
+  const [seasonId, setSeasonId] = useState<string | null>(null)
+  const [helperForm, setHelperForm] = useState<HelperForm | null>(null)
+  const [signups, setSignups] = useState<HelperSignup[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
-  const filledByShift = useMemo(() => {
-    const counts = new Map<string, number>()
-    MOCK_HELPERS.forEach((helper) =>
-      helper.shiftIds.forEach((id) => counts.set(id, (counts.get(id) ?? 0) + 1))
-    )
-    return counts
+  const [settings, setSettings] = useState({ morning_label: '', afternoon_label: '', note: '', contact_email: '' })
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
+  const applySettings = (form: HelperForm) =>
+    setSettings({
+      morning_label: form.morning_label,
+      afternoon_label: form.afternoon_label,
+      note: form.note,
+      contact_email: form.contact_email ?? '',
+    })
+
+  const season = seasons.find((s) => s.id === seasonId) ?? null
+  const link = season ? helperSignupLink(season.year) : ''
+
+  useEffect(() => {
+    listSeasons()
+      .then((data) => {
+        setSeasons(data)
+        const preferred = data.find((s) => s.is_active) ?? data[0]
+        setSeasonId(preferred?.id ?? null)
+        if (!preferred) setIsLoading(false)
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : 'Saisons konnten nicht geladen werden.')
+        setIsLoading(false)
+      })
   }, [])
 
-  const totalNeeded = MOCK_SHIFTS.reduce((sum, shift) => sum + shift.needed, 0)
-  const totalFilled = MOCK_SHIFTS.reduce(
-    (sum, shift) => sum + Math.min(shift.needed, filledByShift.get(shift.id) ?? 0),
-    0
-  )
-  const openSlots = totalNeeded - totalFilled
+  const loadSeasonData = useCallback(async (id: string) => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const [form, helperSignups] = await Promise.all([loadHelperForm(id), loadHelperSignups(id)])
+      setHelperForm(form)
+      setSignups(helperSignups)
+      if (form) applySettings(form)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Daten konnten nicht geladen werden.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
-  const filteredHelpers = MOCK_HELPERS.filter((helper) => {
+  useEffect(() => {
+    if (!seasonId) return
+    loadSeasonData(seasonId)
+  }, [seasonId, loadSeasonData])
+
+  const filteredSignups = signups.filter((signup) => {
     const query = searchQuery.trim().toLowerCase()
     if (!query) return true
-    return [helper.name, helper.club, helper.email].some((value) => value.toLowerCase().includes(query))
+    return [signup.first_name, signup.last_name, signup.email, signup.mobile]
+      .some((value) => value?.toLowerCase().includes(query))
   })
+
+  function showSuccess(message: string) {
+    setSuccessMessage(message)
+    setTimeout(() => setSuccessMessage(null), 4000)
+  }
+
+  async function handleCreateForm() {
+    if (!seasonId) return
+    try {
+      const form = await createHelperForm(seasonId)
+      setHelperForm(form)
+      applySettings(form)
+      showSuccess('Helferanmeldung erstellt. Passe die Angaben an und öffne sie, sobald sie bereit ist.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Erstellen.')
+    }
+  }
+
+  async function handleToggleOpen() {
+    if (!seasonId || !helperForm) return
+    try {
+      setHelperForm(await updateHelperForm(seasonId, { is_open: !helperForm.is_open }))
+      showSuccess(helperForm.is_open ? 'Helferanmeldung geschlossen.' : 'Helferanmeldung ist jetzt geöffnet.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Speichern.')
+    }
+  }
+
+  async function handleSaveSettings() {
+    if (!seasonId) return
+    const contactEmail = settings.contact_email.trim()
+    if (contactEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contactEmail)) {
+      setError('Bitte eine gültige Kontakt-E-Mail eingeben.')
+      return
+    }
+    setIsSavingSettings(true)
+    try {
+      setHelperForm(
+        await updateHelperForm(seasonId, {
+          morning_label: settings.morning_label.trim(),
+          afternoon_label: settings.afternoon_label.trim(),
+          note: settings.note.trim(),
+          contact_email: contactEmail || null,
+        })
+      )
+      showSuccess('Einstellungen gespeichert.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Speichern.')
+    } finally {
+      setIsSavingSettings(false)
+    }
+  }
+
+  async function handleCopyLink() {
+    try {
+      await navigator.clipboard.writeText(link)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    } catch {
+      setError('Link konnte nicht kopiert werden.')
+    }
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      await deleteHelperSignup(id)
+      setSignups((prev) => prev.filter((s) => s.id !== id))
+      setConfirmDeleteId(null)
+      showSuccess('Helferanmeldung gelöscht.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Löschen.')
+    }
+  }
+
+  // Öffnet das lokale E-Mail-Programm; Helfer im BCC, damit sie ihre Adressen nicht gegenseitig sehen
+  function emailAllHelpers() {
+    const emails = Array.from(new Set(signups.map((s) => s.email.trim().toLowerCase())))
+    const to = helperForm?.contact_email ?? ''
+    const subject = encodeURIComponent(`Hallenmehrkampf ${season?.year ?? ''}`.trim())
+    window.location.href = `mailto:${to}?bcc=${emails.join(',')}&subject=${subject}`
+  }
+
+  function exportExcel() {
+    const rows = signups.map((s) => ({
+      Vorname: s.first_name,
+      Name: s.last_name,
+      Einsatz: availabilityLabel(s.availability, helperForm),
+      Wirtschaft: s.interests.includes('wirtschaft') ? 'ja' : '',
+      'Wettkampf-Anlagen': s.interests.includes('anlagen') ? 'ja' : '',
+      Natel: s.mobile,
+      'E-Mail': s.email,
+      'Angemeldet am': formatDate(s.created_at),
+    }))
+    const sheet = XLSX.utils.json_to_sheet(rows)
+    sheet['!cols'] = [16, 16, 34, 11, 18, 16, 30, 14].map((wch) => ({ wch }))
+    sheet['!autofilter'] = { ref: sheet['!ref'] ?? 'A1' }
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Helfer')
+    XLSX.writeFile(workbook, `helfer_${season?.year ?? ''}.xlsx`)
+  }
 
   return (
     <div className="form">
       <div className="admin-container">
-        <div className="admin-banner-wrapper">
-          <InformationBanner
-            variant="info"
-            message="Vorschau mit Beispieldaten – die Helferanmeldung ist noch nicht live."
-          />
-        </div>
-
-        <div className="admin-section">
-          <h2 className="admin-section-title">Übersicht</h2>
-          <div className="admin-stats-grid">
-            <div className="admin-stat-card admin-stat-card-violet">
-              <div className="admin-stat-value admin-stat-value-violet">{MOCK_HELPERS.length}</div>
-              <div className="admin-stat-label admin-stat-label-violet">Helfer</div>
-            </div>
-            <div className="admin-stat-card admin-stat-card-sky">
-              <div className="admin-stat-value admin-stat-value-sky">{MOCK_SHIFTS.length}</div>
-              <div className="admin-stat-label admin-stat-label-sky">Schichten</div>
-            </div>
-            <div className="admin-stat-card admin-stat-card-emerald">
-              <div className="admin-stat-value admin-stat-value-emerald">
-                {Math.round((totalFilled / totalNeeded) * 100)}%
-              </div>
-              <div className="admin-stat-label admin-stat-label-emerald">Besetzt</div>
-            </div>
-            <div className="admin-stat-card admin-stat-card-amber">
-              <div className="admin-stat-value admin-stat-value-amber">{openSlots}</div>
-              <div className="admin-stat-label admin-stat-label-amber">Offene Plätze</div>
-            </div>
+        {error && (
+          <div className="admin-banner-wrapper">
+            <InformationBanner message={error} variant="error" />
           </div>
-        </div>
-
-        <div className="admin-divider" />
-
-        <div className="admin-section">
-          <h2 className="admin-section-title">Schichtplan</h2>
-          <div className="helfer-shift-list">
-            {MOCK_SHIFTS.map((shift) => {
-              const filled = filledByShift.get(shift.id) ?? 0
-              const state = filled >= shift.needed ? 'full' : filled === 0 ? 'empty' : 'partial'
-              return (
-                <div key={shift.id} className="helfer-shift">
-                  <div className="helfer-shift-time">
-                    {shift.start}
-                    <span>–{shift.end}</span>
-                  </div>
-                  <div className="helfer-shift-info">
-                    <div className="helfer-shift-task">{shift.task}</div>
-                    <div className="helfer-shift-track">
-                      <div
-                        className={`helfer-shift-fill helfer-shift-fill-${state}`}
-                        style={{ width: `${Math.min(100, (filled / shift.needed) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className={`helfer-shift-count helfer-shift-count-${state}`}>
-                    {filled}/{shift.needed}
-                  </div>
-                </div>
-              )
-            })}
+        )}
+        {successMessage && (
+          <div className="admin-banner-wrapper">
+            <InformationBanner message={successMessage} variant="success" />
           </div>
+        )}
+
+        <div className="admin-section helfer-season-select">
+          <label className="admin-label" htmlFor="helfer-season">Wettkampf</label>
+          <select
+            id="helfer-season"
+            className="admin-input admin-select"
+            value={seasonId ?? ''}
+            onChange={(event) => setSeasonId(event.target.value)}
+          >
+            {seasons.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.event_number}. Hallenmehrkampf {s.year} – {formatDate(s.event_date)}
+                {s.is_active ? ' (aktiv)' : ''}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="admin-divider" />
-
-        <div className="admin-section" style={{ marginBottom: 0 }}>
-          <div className="helfer-list-header">
-            <h2 className="admin-section-title" style={{ margin: 0 }}>
-              Helfer ({filteredHelpers.length})
+        {isLoading ? (
+          <p>Lade Helferdaten…</p>
+        ) : !season ? (
+          <p>Noch keine Saison vorhanden. Lege zuerst unter «Anmeldungen» eine Saison an.</p>
+        ) : !helperForm ? (
+          <div className="helfer-empty-state">
+            <h2 className="admin-section-title" style={{ marginBottom: '0.75rem' }}>
+              Noch keine Helferanmeldung für {season.year}
             </h2>
-            <button className="admin-refresh-button" disabled title="Noch nicht verfügbar">
-              Anmeldelink kopieren
+            <p>Erstelle das Formular, passe die Einsatzzeiten an und verschicke danach den Link.</p>
+            <button className="admin-refresh-button" onClick={handleCreateForm}>
+              Helferanmeldung erstellen
             </button>
           </div>
-          <input
-            type="search"
-            className="admin-search-input helfer-search"
-            placeholder="Name, Verein oder E-Mail suchen…"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
-          <div className="helfer-list">
-            {filteredHelpers.map((helper) => (
-              <div key={helper.id} className="helfer-card">
-                <div className="helfer-card-header">
-                  <div>
-                    <div className="helfer-card-name">{helper.name}</div>
-                    <div className="helfer-card-meta">
-                      {helper.club} · {helper.email}
-                    </div>
-                  </div>
-                </div>
-                <div className="helfer-card-shifts">
-                  {helper.shiftIds.map((id) => {
-                    const shift = shiftById.get(id)
-                    return (
-                      shift && (
-                        <span key={id} className="helfer-shift-tag">
-                          {shift.start} {shift.task}
-                        </span>
-                      )
-                    )
-                  })}
+        ) : (
+          <>
+            {/* Formular & Link */}
+            <div className="admin-section">
+              <div className="helfer-form-header">
+                <h2 className="admin-section-title" style={{ margin: 0 }}>Formular</h2>
+                <span className={`helfer-status ${helperForm.is_open ? 'helfer-status-open' : 'helfer-status-closed'}`}>
+                  {helperForm.is_open ? 'Geöffnet' : 'Geschlossen'}
+                </span>
+                <button
+                  className={`admin-button ${helperForm.is_open ? 'admin-button-secondary' : 'admin-button-primary'}`}
+                  onClick={handleToggleOpen}
+                >
+                  {helperForm.is_open ? 'Schliessen' : 'Öffnen'}
+                </button>
+              </div>
+
+              <div className="helfer-link-box">
+                <a href={link} target="_blank" rel="noopener noreferrer" className="helfer-link">
+                  {link}
+                </a>
+                <button className="admin-button admin-button-secondary" onClick={handleCopyLink}>
+                  {linkCopied ? 'Kopiert ✓' : 'Link kopieren'}
+                </button>
+              </div>
+              {!helperForm.is_open && (
+                <p className="helfer-hint">Solange das Formular geschlossen ist, sehen Besucher nur einen Hinweis.</p>
+              )}
+
+              <div className="helfer-settings">
+                <label className="admin-label" htmlFor="helfer-morning">Vormittag</label>
+                <input
+                  id="helfer-morning"
+                  className="admin-input"
+                  value={settings.morning_label}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, morning_label: e.target.value }))}
+                />
+                <label className="admin-label" htmlFor="helfer-afternoon">Nachmittag</label>
+                <input
+                  id="helfer-afternoon"
+                  className="admin-input"
+                  value={settings.afternoon_label}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, afternoon_label: e.target.value }))}
+                />
+                <label className="admin-label" htmlFor="helfer-note">Hinweis oben im Formular</label>
+                <textarea
+                  id="helfer-note"
+                  className="admin-input"
+                  rows={2}
+                  value={settings.note}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, note: e.target.value }))}
+                />
+                <label className="admin-label" htmlFor="helfer-contact">Kontakt-E-Mail für Fragen</label>
+                <input
+                  id="helfer-contact"
+                  type="email"
+                  className="admin-input"
+                  placeholder="z.B. helfer@scliestal.ch"
+                  value={settings.contact_email}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, contact_email: e.target.value }))}
+                />
+                <p className="helfer-hint" style={{ margin: 0 }}>
+                  Erscheint in der Bestätigungsmail an Helfer und auf der Danke-Seite. Antworten auf die Mail gehen an diese Adresse.
+                </p>
+                <div>
+                  <button className="admin-refresh-button" onClick={handleSaveSettings} disabled={isSavingSettings}>
+                    {isSavingSettings ? 'Speichere…' : 'Einstellungen speichern'}
+                  </button>
                 </div>
               </div>
-            ))}
-            {filteredHelpers.length === 0 && <p className="helfer-empty">Keine Helfer gefunden.</p>}
-          </div>
-        </div>
+            </div>
+
+            <div className="admin-divider" />
+
+            {/* Helferliste */}
+            <div className="admin-section" style={{ marginBottom: 0 }}>
+              <div className="helfer-list-header">
+                <h2 className="admin-section-title" style={{ margin: 0 }}>
+                  Helfer ({searchQuery ? `${filteredSignups.length} von ${signups.length}` : signups.length})
+                </h2>
+                <div className="helfer-list-actions">
+                  <button className="admin-button admin-button-secondary" onClick={emailAllHelpers} disabled={signups.length === 0}>
+                    E-Mail an alle
+                  </button>
+                  <button className="admin-refresh-button" onClick={exportExcel} disabled={signups.length === 0}>
+                    Excel exportieren
+                  </button>
+                </div>
+              </div>
+              <input
+                type="search"
+                className="admin-search-input helfer-search"
+                placeholder="Name, Natel oder E-Mail suchen…"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+              <div className="helfer-list">
+                {filteredSignups.map((signup) => (
+                  <div key={signup.id} className="helfer-card">
+                    <div className="helfer-card-header">
+                      <div>
+                        <div className="helfer-card-name">
+                          {signup.first_name} {signup.last_name}
+                        </div>
+                        <div className="helfer-card-meta">
+                          Natel {signup.mobile} · <a href={`mailto:${signup.email}`}>{signup.email}</a>
+                        </div>
+                      </div>
+                      {confirmDeleteId === signup.id ? (
+                        <div className="helfer-delete-confirm">
+                          <button className="admin-button admin-button-danger" onClick={() => handleDelete(signup.id)}>
+                            Löschen
+                          </button>
+                          <button className="admin-button admin-button-secondary" onClick={() => setConfirmDeleteId(null)}>
+                            Abbrechen
+                          </button>
+                        </div>
+                      ) : (
+                        <button className="helfer-delete" onClick={() => setConfirmDeleteId(signup.id)} aria-label="Löschen">
+                          Löschen
+                        </button>
+                      )}
+                    </div>
+                    <div className="helfer-card-shifts">
+                      <span className="helfer-shift-tag">{availabilityLabel(signup.availability, helperForm)}</span>
+                      {signup.interests.map((interest) => (
+                        <span key={interest} className="helfer-shift-tag helfer-interest-tag">
+                          {INTEREST_LABELS[interest]}
+                        </span>
+                      ))}
+                      <span className="helfer-card-date">angemeldet am {formatDate(signup.created_at)}</span>
+                    </div>
+                  </div>
+                ))}
+                {filteredSignups.length === 0 && (
+                  <p className="helfer-empty">
+                    {signups.length === 0 ? 'Noch keine Helfer angemeldet.' : 'Keine Helfer gefunden.'}
+                  </p>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

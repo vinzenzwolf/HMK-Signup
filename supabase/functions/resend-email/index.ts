@@ -5,6 +5,9 @@
 //   { type: 'edit-link', edit_token, base_url? }
 //       Öffentlich (Anmeldeformular). Die Mail wird hier aus der Anmeldung gebaut und nur an
 //       die hinterlegte Adresse gesendet – Empfänger und Inhalt sind nicht frei wählbar.
+//   { type: 'helper-confirmation', helper_signup_id }
+//       Öffentlich (Helferformular). Bestätigung an die Adresse der Helferanmeldung,
+//       nur in den ersten Minuten nach der Anmeldung.
 //   { to, subject, html, attachments? }
 //       Frei formulierte Mail (Rundmail, Test-Mail). Nur für angemeldete Admins.
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
@@ -129,6 +132,128 @@ const sendEditLink = async (editToken: unknown, requestedBaseUrl: unknown) => {
   })
 }
 
+// Bestätigung nur kurz nach der Anmeldung, damit sich darüber keine wiederholten Mails auslösen lassen
+const HELPER_CONFIRMATION_WINDOW_MS = 10 * 60 * 1000
+
+const AVAILABILITY_FALLBACK: Record<string, string> = {
+  ganzer_tag: 'Ganzer Tag',
+  vormittag: 'Vormittag',
+  nachmittag: 'Nachmittag',
+}
+
+const INTEREST_LABELS: Record<string, string> = {
+  wirtschaft: 'in der Wirtschaft',
+  anlagen: 'bei den Wettkampf-Anlagen',
+}
+
+// Ganztägiger Kalendereintrag für den Wettkampftag (eventDate im Format YYYY-MM-DD)
+const buildEventIcs = (uid: string, eventDate: string) => {
+  const start = eventDate.replace(/-/g, '')
+  const next = new Date(`${eventDate}T00:00:00Z`)
+  next.setUTCDate(next.getUTCDate() + 1)
+  const end = next.toISOString().slice(0, 10).replace(/-/g, '')
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//SC Liestal//Hallenmehrkampf//DE',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `UID:${uid}@hallenmehrkampf.ch`,
+    `DTSTAMP:${stamp}`,
+    `DTSTART;VALUE=DATE:${start}`,
+    `DTEND;VALUE=DATE:${end}`,
+    'SUMMARY:Hallenmehrkampf',
+    'TRANSP:OPAQUE',
+    'END:VEVENT',
+    'END:VCALENDAR',
+    '',
+  ].join('\r\n')
+}
+
+const sendHelperConfirmation = async (signupId: unknown) => {
+  if (typeof signupId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(signupId)) {
+    return json({ error: "Missing or invalid 'helper_signup_id'" }, 400)
+  }
+
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+  const { data: signup, error } = await admin
+    .from('helper_signups')
+    .select('first_name, email, availability, interests, created_at, season:seasons(year, event_date, helper_form:helper_forms(morning_label, afternoon_label, contact_email))')
+    .eq('id', signupId)
+    .maybeSingle()
+
+  if (error) {
+    console.error('Failed to load helper signup', error)
+    return json({ error: 'Helferanmeldung konnte nicht geladen werden' }, 500)
+  }
+  if (!signup) {
+    return json({ error: 'Helferanmeldung nicht gefunden' }, 404)
+  }
+  if (Date.now() - new Date(signup.created_at).getTime() > HELPER_CONFIRMATION_WINDOW_MS) {
+    return json({ error: 'Bestätigung kann nur direkt nach der Anmeldung versendet werden' }, 409)
+  }
+
+  const season = signup.season as {
+    year: number
+    event_date: string
+    helper_form: { morning_label: string; afternoon_label: string; contact_email: string | null } | null
+  } | null
+
+  const availabilityText =
+    signup.availability === 'vormittag'
+      ? season?.helper_form?.morning_label
+      : signup.availability === 'nachmittag'
+        ? season?.helper_form?.afternoon_label
+        : undefined
+  const eventDate = season?.event_date
+    ? new Date(season.event_date).toLocaleDateString('de-CH', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'Europe/Zurich',
+      })
+    : null
+  const interests = (signup.interests as string[]).map((interest) => INTEREST_LABELS[interest] ?? interest)
+  const contactEmail = season?.helper_form?.contact_email ? escapeHtml(season.helper_form.contact_email) : null
+
+  const html = `
+    <h1>Helferanmeldung SCL Hallenmehrkampf${season?.year ? ` ${season.year}` : ''}</h1>
+    <p>Hallo ${escapeHtml(signup.first_name)}</p>
+    <p>Vielen Dank für Ihre Anmeldung als Helfer${eventDate ? ` am Hallenmehrkampf vom ${eventDate}` : ''}. Wir haben folgende Angaben erhalten:</p>
+    <ul>
+      <li>Einsatz: ${escapeHtml(availabilityText ?? AVAILABILITY_FALLBACK[signup.availability] ?? signup.availability)}</li>
+      ${interests.length > 0 ? `<li>Interesse: ${escapeHtml(interests.join(', '))}</li>` : ''}
+    </ul>
+    <p>Die genaue Einteilung erhalten Sie vor dem Wettkampf.${
+      contactEmail
+        ? ` Bei Fragen oder Änderungen melden Sie sich bitte unter <a href="mailto:${contactEmail}">${contactEmail}</a>.`
+        : ''
+    }</p>
+    ${season?.event_date ? '<p>Im Anhang finden Sie den Wettkampftag als Kalendereintrag.</p>' : ''}
+  `
+
+  return sendViaResend({
+    to: signup.email,
+    subject: `Helferanmeldung SCL Hallenmehrkampf${season?.year ? ` ${season.year}` : ''}`,
+    html,
+    ...(contactEmail ? { reply_to: contactEmail } : {}),
+    ...(season?.event_date
+      ? {
+          attachments: [
+            {
+              filename: 'hallenmehrkampf.ics',
+              content: btoa(buildEventIcs(signupId, season.event_date)),
+              content_type: 'text/calendar; charset=utf-8; method=PUBLISH',
+            },
+          ],
+        }
+      : {}),
+  })
+}
+
 const isAdminRequest = async (req: Request) => {
   const authorization = req.headers.get('Authorization')
   if (!authorization) return false
@@ -156,6 +281,10 @@ Deno.serve(async (req) => {
 
   if (payload?.type === 'edit-link') {
     return sendEditLink(payload.edit_token, payload.base_url)
+  }
+
+  if (payload?.type === 'helper-confirmation') {
+    return sendHelperConfirmation(payload.helper_signup_id)
   }
 
   if (!(await isAdminRequest(req))) {
