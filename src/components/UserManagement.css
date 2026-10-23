@@ -1,0 +1,143 @@
+.user-mgmt-body {
+  margin-top: 1.5rem;
+}
+
+.user-mgmt-invite {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2rem;
+  border-radius: 16px;
+  background-color: #f5f3ff;
+  border: 1px solid #ddd6fe;
+}
+
+.user-mgmt-invite .service-status-group-title {
+  margin: 0;
+}
+
+.user-mgmt-invite input[type='email'] {
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #ffffff;
+}
+
+.user-mgmt-hint {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.user-mgmt-roles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+}
+
+.user-mgmt-role {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #0f172a;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.user-mgmt-role input {
+  width: 1.125rem;
+  height: 1.125rem;
+  padding: 0;
+  accent-color: #4C1D95;
+}
+
+.user-mgmt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.user-mgmt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background-color: #f8fafc;
+  transition: opacity 0.2s;
+}
+
+.user-mgmt-card-busy {
+  opacity: 0.6;
+}
+
+.user-mgmt-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.user-mgmt-email {
+  color: #0f172a;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.user-mgmt-meta {
+  margin-top: 0.125rem;
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.user-mgmt-badge {
+  flex-shrink: 0;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background-color: #4C1D95;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.user-mgmt-warning {
+  color: #b45309;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.user-mgmt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.user-mgmt-actions .admin-button {
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+}
+
+.user-mgmt-actions button:disabled,
+.user-mgmt-invite button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.user-mgmt-delete {
+  padding: 0.5rem 0.875rem;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: transparent;
+  color: #dc2626;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.user-mgmt-delete:hover {
+  background-color: #fef2f2;
+}

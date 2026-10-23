@@ -31,12 +31,14 @@ const numberHeader = (headers: Headers, name: string) => {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
-  // Nur angemeldete Admins dürfen die Daten sehen
+  // Nur Systemadmins dürfen die Daten sehen
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
     global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
   })
   const { data: userData } = await supabase.auth.getUser()
   if (!userData.user) return json({ error: 'Nicht angemeldet' }, 401)
+  const { data: myRoles } = await supabase.rpc('my_admin_roles')
+  if (!(myRoles as string[] | null)?.includes('system')) return json({ error: 'Nur für Systemadmins' }, 403)
 
   const apiKey = Deno.env.get('RESEND_STATUS_API_KEY') ?? Deno.env.get('RESEND_API_KEY')
   if (!apiKey) return json({ error: 'Secret RESEND_STATUS_API_KEY bzw. RESEND_API_KEY fehlt' }, 500)

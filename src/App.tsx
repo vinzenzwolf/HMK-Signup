@@ -3,7 +3,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import SignupPage from './pages/SignupPage'
 import HelperSignupPage from './pages/HelperSignupPage'
 import AdminLogin from './pages/AdminLogin'
-import AdminLayout from './pages/AdminLayout'
+import AdminLayout, { RequireRole } from './pages/AdminLayout'
+import AdminSetPassword from './pages/AdminSetPassword'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminHelfer from './pages/AdminHelfer'
 import AdminSystem from './pages/AdminSystem'
@@ -20,6 +21,7 @@ function App() {
           <Routes>
             <Route path="/impressum" element={<Impressum />} />
             <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/passwort" element={<AdminSetPassword />} />
             <Route
               path="/admin"
               element={
@@ -28,9 +30,9 @@ function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<AdminDashboard />} />
-              <Route path="helfer" element={<AdminHelfer />} />
-              <Route path="system" element={<AdminSystem />} />
+              <Route index element={<RequireRole role="registrations"><AdminDashboard /></RequireRole>} />
+              <Route path="helfer" element={<RequireRole role="helpers"><AdminHelfer /></RequireRole>} />
+              <Route path="system" element={<RequireRole role="system"><AdminSystem /></RequireRole>} />
             </Route>
             <Route path="/helfer" element={<HelperSignupPage />} />
             <Route path="/:year/helfer" element={<HelperSignupPage />} />
