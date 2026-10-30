@@ -1,9 +1,8 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
-import * as XLSX from 'xlsx'
 import { supabase } from './supabase'
 
-export type ContactStatus = 'subscribed' | 'unsubscribed' | 'bounced' | 'complained'
-export type ContactSource = 'legacy_registration' | 'registration_optin' | 'csv_import' | 'manual'
+export type ContactStatus = 'subscribed' | 'unsubscribed' | 'declined' | 'bounced' | 'complained'
+export type ContactSource = 'legacy_registration' | 'registration_optin' | 'registration_declined' | 'csv_import' | 'manual'
 
 export type NewsletterContact = {
   id: string
@@ -37,12 +36,15 @@ export type Broadcast = {
   created_at: string
 }
 
+export type SignupHistory = Map<string, Array<{ year: number; athletes: number }>>
+
 export type ImportRow = { email: string; name: string | null; club: string | null }
 export type ImportPreview = { fresh: ImportRow[]; duplicates: number; invalid: number; unsubscribed: number }
 
 export const STATUS_LABELS: Record<ContactStatus, string> = {
   subscribed: 'Aktiv',
   unsubscribed: 'Abgemeldet',
+  declined: 'Deaktiviert',
   bounced: 'Unzustellbar',
   complained: 'Spam gemeldet',
 }
@@ -50,6 +52,7 @@ export const STATUS_LABELS: Record<ContactStatus, string> = {
 export const SOURCE_LABELS: Record<ContactSource, string> = {
   legacy_registration: 'Altanmeldung',
   registration_optin: 'Haken bei Anmeldung',
+  registration_declined: 'Haken abgewählt',
   csv_import: 'CSV-Import',
   manual: 'Manuell',
 }
@@ -84,6 +87,19 @@ export async function loadContacts(): Promise<NewsletterContact[]> {
   return data as NewsletterContact[]
 }
 
+export async function loadSignupHistory(): Promise<SignupHistory> {
+  const { data, error } = await supabase.rpc('newsletter_contact_history')
+  if (error) throw new Error(error.message)
+
+  const history: SignupHistory = new Map()
+  for (const row of data as Array<{ email: string; year: number; athlete_count: number }>) {
+    const entries = history.get(row.email) ?? []
+    entries.push({ year: row.year, athletes: row.athlete_count })
+    history.set(row.email, entries)
+  }
+  return history
+}
+
 export async function loadBroadcasts(): Promise<Broadcast[]> {
   const { data, error } = await supabase
     .from('broadcasts')
@@ -107,13 +123,13 @@ export async function addContact(row: ImportRow): Promise<void> {
 }
 
 // Existing contacts are skipped, so an import can never reactivate someone who unsubscribed
-export async function importContacts(rows: ImportRow[], consentNote: string): Promise<void> {
+export async function importContacts(rows: ImportRow[]): Promise<void> {
   const { error } = await supabase.from('newsletter_contacts').upsert(
     rows.map((row) => ({
       ...row,
-      source: 'csv_import',
+      source: 'manual',
       consent_at: new Date().toISOString(),
-      consent_note: consentNote,
+      consent_note: 'Eingefügte Liste, Zustimmung vom Admin bestätigt',
     })),
     { onConflict: 'email', ignoreDuplicates: true }
   )
@@ -173,41 +189,12 @@ export async function sendBroadcast(subject: string, content: BroadcastContent, 
   return result.message
 }
 
-const findColumn = (header: string[], names: string[]) => header.findIndex((cell) => names.includes(cell))
-
-// Reads a CSV or Excel file; without a recognised header the column containing @ is used
-export async function parseContactFile(file: File): Promise<ImportRow[]> {
-  const isCsv = file.name.toLowerCase().endsWith('.csv')
-  const workbook = isCsv
-    ? XLSX.read(await file.text(), { type: 'string' })
-    : XLSX.read(await file.arrayBuffer(), { type: 'array' })
-  const sheet = workbook.Sheets[workbook.SheetNames[0]]
-  const rows = XLSX.utils
-    .sheet_to_json<unknown[]>(sheet, { header: 1, defval: '' })
-    .map((row) => row.map((cell) => String(cell).trim()))
-    .filter((row) => row.some(Boolean))
-  if (rows.length === 0) return []
-
-  const header = rows[0].map((cell) => cell.toLowerCase())
-  let emailColumn = findColumn(header, ['email', 'e-mail', 'mail', 'e-mail-adresse', 'emailadresse'])
-  const hasHeader = emailColumn >= 0
-  if (!hasHeader) emailColumn = rows[0].findIndex((cell) => cell.includes('@'))
-  if (emailColumn < 0) throw new Error('Keine Spalte mit E-Mail-Adressen gefunden.')
-
-  const nameColumn = hasHeader ? findColumn(header, ['name', 'trainer', 'trainer/in', 'kontakt']) : -1
-  const firstNameColumn = hasHeader ? findColumn(header, ['vorname']) : -1
-  const lastNameColumn = hasHeader ? findColumn(header, ['nachname']) : -1
-  const clubColumn = hasHeader ? findColumn(header, ['verein', 'club']) : -1
-
-  return rows.slice(hasHeader ? 1 : 0).map((row) => {
-    const fullName = [row[firstNameColumn], row[lastNameColumn]].filter(Boolean).join(' ')
-    return {
-      email: normalizeEmail(row[emailColumn] ?? ''),
-      name: row[nameColumn] || fullName || null,
-      club: row[clubColumn] || null,
-    }
-  })
-}
+// Accepts pasted addresses separated by line breaks, spaces, commas or semicolons
+export const parseEmailList = (text: string): ImportRow[] =>
+  text
+    .split(/[\s,;]+/)
+    .filter(Boolean)
+    .map((entry) => ({ email: normalizeEmail(entry), name: null, club: null }))
 
 export function previewImport(rows: ImportRow[], contacts: NewsletterContact[]): ImportPreview {
   const known = new Map(contacts.map((contact) => [contact.email, contact.status]))

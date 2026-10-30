@@ -12,8 +12,9 @@ import {
   isValidEmail,
   loadBroadcasts,
   loadContacts,
+  loadSignupHistory,
   normalizeEmail,
-  parseContactFile,
+  parseEmailList,
   previewImport,
   removeAttachment,
   sendBroadcast,
@@ -25,6 +26,7 @@ import {
   type ContactStatus,
   type ImportPreview,
   type NewsletterContact,
+  type SignupHistory,
 } from '../lib/broadcast'
 import './AdminHelfer.css'
 import './AdminBroadcast.css'
@@ -48,6 +50,7 @@ function AdminBroadcast() {
   const { email: adminEmail } = useAdminRoles()
   const [contacts, setContacts] = useState<NewsletterContact[]>([])
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([])
+  const [signupHistory, setSignupHistory] = useState<SignupHistory>(new Map())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -58,7 +61,7 @@ function AdminBroadcast() {
   const [newContact, setNewContact] = useState({ email: '', name: '', club: '' })
 
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null)
-  const [importName, setImportName] = useState('')
+  const [pastedEmails, setPastedEmails] = useState('')
   const [importConsent, setImportConsent] = useState(false)
 
   const [subject, setSubject] = useState('')
@@ -68,9 +71,14 @@ function AdminBroadcast() {
   const [isBusy, setIsBusy] = useState(false)
 
   const refresh = useCallback(async () => {
-    const [contactData, broadcastData] = await Promise.all([loadContacts(), loadBroadcasts()])
+    const [contactData, broadcastData, historyData] = await Promise.all([
+      loadContacts(),
+      loadBroadcasts(),
+      loadSignupHistory(),
+    ])
     setContacts(contactData)
     setBroadcasts(broadcastData)
+    setSignupHistory(historyData)
   }, [])
 
   useEffect(() => {
@@ -102,6 +110,7 @@ function AdminBroadcast() {
 
   const subscribedCount = contacts.filter((contact) => contact.status === 'subscribed').length
   const inactiveCount = contacts.length - subscribedCount
+  const returningCount = contacts.filter((contact) => (signupHistory.get(contact.email)?.length ?? 0) > 1).length
 
   const filteredContacts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
@@ -126,6 +135,11 @@ function AdminBroadcast() {
       setError('Bitte eine gültige E-Mail-Adresse eingeben.')
       return
     }
+    const existing = contacts.find((contact) => contact.email === email)
+    if (existing) {
+      setError(`${email} ist bereits erfasst (${STATUS_LABELS[existing.status]}).`)
+      return
+    }
     const added = await run(async () => {
       await addContact({ email, name: newContact.name.trim() || null, club: newContact.club.trim() || null })
       await refresh()
@@ -134,25 +148,22 @@ function AdminBroadcast() {
     if (added) setNewContact({ email: '', name: '', club: '' })
   }
 
-  async function handleImportFile(file: File | null) {
-    setImportPreview(null)
+  function handlePreviewPasted() {
     setImportConsent(false)
-    if (!file) return
-    await run(async () => {
-      const rows = await parseContactFile(file)
-      setImportName(file.name)
-      setImportPreview(previewImport(rows, contacts))
-    })
+    setImportPreview(previewImport(parseEmailList(pastedEmails), contacts))
   }
 
   async function handleImport() {
     if (!importPreview) return
     const imported = await run(async () => {
-      await importContacts(importPreview.fresh, `CSV-Import ${importName}, Zustimmung vom Admin bestätigt`)
+      await importContacts(importPreview.fresh)
       await refresh()
       return `${importPreview.fresh.length} Empfänger importiert.`
     })
-    if (imported) setImportPreview(null)
+    if (imported) {
+      setImportPreview(null)
+      setPastedEmails('')
+    }
   }
 
   async function handleAttachments(files: FileList | null) {
@@ -335,7 +346,7 @@ function AdminBroadcast() {
             <div className="admin-section">
               <div className="helfer-list-header">
                 <h2 className="admin-section-title" style={{ margin: 0 }}>
-                  Empfänger ({subscribedCount} aktiv, {inactiveCount} inaktiv)
+                  Empfänger ({subscribedCount} aktiv, {inactiveCount} inaktiv, {returningCount} wiederkehrend)
                 </h2>
               </div>
 
@@ -378,21 +389,27 @@ function AdminBroadcast() {
               </div>
 
               <div className="broadcast-import">
-                <label className="admin-label" htmlFor="broadcast-import-file">CSV- oder Excel-Import</label>
-                <input
-                  id="broadcast-import-file"
-                  type="file"
-                  accept=".csv,.xlsx,.xls"
-                  disabled={isBusy}
-                  onChange={(e) => {
-                    handleImportFile(e.target.files?.[0] ?? null)
-                    e.target.value = ''
-                  }}
+                <label className="admin-label" htmlFor="broadcast-paste">Adressen einfügen</label>
+                <textarea
+                  id="broadcast-paste"
+                  className="admin-input"
+                  rows={4}
+                  placeholder="Eine Adresse pro Zeile"
+                  value={pastedEmails}
+                  onChange={(e) => setPastedEmails(e.target.value)}
                 />
-                <p className="helfer-hint">Erkannte Spalten: E-Mail, Name oder Vorname/Nachname, Verein.</p>
+                <div>
+                  <button
+                    className="admin-button admin-button-secondary"
+                    disabled={isBusy || !pastedEmails.trim()}
+                    onClick={handlePreviewPasted}
+                  >
+                    Auf Dubletten prüfen
+                  </button>
+                </div>
                 {importPreview && (
                   <div className="helfer-card">
-                    <div className="helfer-card-name">{importName}</div>
+                    <div className="helfer-card-name">Eingefügte Liste</div>
                     <div className="helfer-card-meta">
                       {importPreview.fresh.length} neu · {importPreview.duplicates} bereits erfasst oder doppelt ·{' '}
                       {importPreview.invalid} ungültig · {importPreview.unsubscribed} abgemeldet (werden nicht reaktiviert)
@@ -444,18 +461,28 @@ function AdminBroadcast() {
 
               <div className="helfer-list">
                 {filteredContacts.length === 0 && <p className="helfer-empty">Keine Empfänger gefunden.</p>}
-                {filteredContacts.map((contact) => (
+                {filteredContacts.map((contact) => {
+                  const signups = signupHistory.get(contact.email) ?? []
+                  return (
                   <div key={contact.id} className="helfer-card broadcast-contact">
                     <div>
                       <div className="helfer-card-name">{contact.email}</div>
                       <div className="helfer-card-meta">
                         {[contact.name, contact.club].filter(Boolean).join(' · ') || 'Kein Name'}
                       </div>
+                      <div className="helfer-card-meta">
+                        {signups.length > 0
+                          ? `Angemeldet: ${signups
+                              .map(({ year, athletes }) => `${year} (${athletes} Athlet/innen)`)
+                              .join(', ')}`
+                          : 'Noch nie angemeldet'}
+                      </div>
                       <div className="helfer-card-shifts">
                         <span className="helfer-shift-tag">{STATUS_LABELS[contact.status]}</span>
                         <span className="helfer-shift-tag" title={contact.consent_note ?? undefined}>
                           {SOURCE_LABELS[contact.source]}
                         </span>
+                        {signups.length > 1 && <span className="helfer-shift-tag">Wiederkehrend</span>}
                       </div>
                     </div>
                     <div className="broadcast-contact-actions">
@@ -499,7 +526,8 @@ function AdminBroadcast() {
                       )}
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
 

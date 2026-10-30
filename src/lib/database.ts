@@ -68,7 +68,7 @@ function toRpcParams(data: RegistrationData) {
     p_email: data.email,
     p_phone: data.phone,
     p_athletes: data.athletes,
-    p_newsletter_opt_in: data.newsletter_opt_in ?? false,
+    p_newsletter_opt_in: data.newsletter_opt_in ?? null,
   }
 }
 

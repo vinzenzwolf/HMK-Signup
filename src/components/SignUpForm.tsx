@@ -471,7 +471,6 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
           phone: phoneNumber.trim(),
           athletes,
           season_id: seasonId,
-          newsletter_opt_in: newsletterOptIn,
         });
         if (updateResult.edit_token) {
           setSavedEditToken(updateResult.edit_token)
