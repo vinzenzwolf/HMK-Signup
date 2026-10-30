@@ -387,7 +387,19 @@ function StatusRow({ check }: { check: CheckResult }) {
 const usageState = (used: number, limit: number): CheckState =>
   used >= limit ? 'down' : used >= limit * 0.8 ? 'degraded' : 'ok'
 
-function UsageBar({ label, used, limit, hint }: { label: string; used: number; limit: number; hint: string }) {
+export function UsageBar({
+  label,
+  used,
+  limit,
+  hint,
+  unit = 'E-Mails',
+}: {
+  label: string
+  used: number
+  limit: number
+  hint: string
+  unit?: string
+}) {
   const state = usageState(used, limit)
   const percent = Math.min(100, Math.round((used / limit) * 100))
   return (
@@ -402,7 +414,7 @@ function UsageBar({ label, used, limit, hint }: { label: string; used: number; l
         <div className={`resend-usage-fill resend-usage-fill-${state}`} style={{ width: `${percent}%` }} />
       </div>
       <div className="resend-usage-hint">
-        {limit - used > 0 ? `Noch ${limit - used} E-Mails` : 'Limit erreicht'} · {hint}
+        {limit - used > 0 ? `Noch ${limit - used} ${unit}` : 'Limit erreicht'} · {hint}
       </div>
     </div>
   )

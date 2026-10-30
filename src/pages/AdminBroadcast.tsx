@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import InformationBanner from '../components/InformationBanner'
+import { UsageBar } from '../components/ServiceStatus'
 import {
   SOURCE_LABELS,
   STATUS_LABELS,
@@ -28,6 +29,8 @@ import './AdminHelfer.css'
 import './AdminBroadcast.css'
 
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
+// Limit des Resend Free-Plans – bei einem Planwechsel hier anpassen
+const RESEND_CONTACT_LIMIT = 1000
 
 const EMPTY_CONTENT: BroadcastContent = {
   title: '',
@@ -255,7 +258,7 @@ function AdminBroadcast() {
                     }}
                   />
                   <p className="helfer-hint">
-                    Anhänge werden als Download-Link in die Mail eingefügt und sind öffentlich abrufbar. Keine Personendaten hochladen.
+                    Max. 10 MB pro PDF. Anhänge werden als Download-Link in die Mail eingefügt und sind öffentlich abrufbar. Keine Personendaten hochladen.
                   </p>
                   {content.attachments.map((file) => (
                     <div key={file.path} className="broadcast-attachment">
@@ -321,6 +324,16 @@ function AdminBroadcast() {
                 <h2 className="admin-section-title" style={{ margin: 0 }}>
                   Empfänger ({subscribedCount} aktiv, {inactiveCount} inaktiv)
                 </h2>
+              </div>
+
+              <div className="broadcast-usage">
+                <UsageBar
+                  label="Kontakte"
+                  used={contacts.length}
+                  limit={RESEND_CONTACT_LIMIT}
+                  unit="Kontakte"
+                  hint="Broadcasts selbst sind unbegrenzt"
+                />
               </div>
 
               <div className="broadcast-add">

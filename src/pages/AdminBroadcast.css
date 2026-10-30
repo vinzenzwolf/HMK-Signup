@@ -95,3 +95,7 @@
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+
+.broadcast-usage {
+  margin-bottom: 1.5rem;
+}
