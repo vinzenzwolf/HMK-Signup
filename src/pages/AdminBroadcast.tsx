@@ -7,12 +7,15 @@ import {
   STATUS_LABELS,
   addContact,
   buildBroadcastHtml,
+  createTemplate,
   deleteContact,
+  deleteTemplate,
   importContacts,
   isValidEmail,
   loadBroadcasts,
   loadContacts,
   loadSignupHistory,
+  loadTemplates,
   normalizeEmail,
   parseEmailList,
   previewImport,
@@ -20,9 +23,11 @@ import {
   sendBroadcast,
   sendTestMail,
   unsubscribeContact,
+  updateTemplate,
   uploadAttachment,
   type Broadcast,
   type BroadcastContent,
+  type BroadcastTemplate,
   type ContactStatus,
   type ImportPreview,
   type NewsletterContact,
@@ -50,6 +55,7 @@ function AdminBroadcast() {
   const { email: adminEmail } = useAdminRoles()
   const [contacts, setContacts] = useState<NewsletterContact[]>([])
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([])
+  const [templates, setTemplates] = useState<BroadcastTemplate[]>([])
   const [signupHistory, setSignupHistory] = useState<SignupHistory>(new Map())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -70,15 +76,24 @@ function AdminBroadcast() {
   const [confirmSend, setConfirmSend] = useState(false)
   const [isBusy, setIsBusy] = useState(false)
 
+  const [activeTemplateId, setActiveTemplateId] = useState('')
+  const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null)
+  const [confirmDeleteTemplate, setConfirmDeleteTemplate] = useState(false)
+  const [templateName, setTemplateName] = useState('')
+  // Nur PDFs aus diesem Entwurf dürfen aus dem Speicher – Vorlagen und versendete Mails verlinken die übrigen
+  const [draftUploads, setDraftUploads] = useState<string[]>([])
+
   const refresh = useCallback(async () => {
-    const [contactData, broadcastData, historyData] = await Promise.all([
+    const [contactData, broadcastData, historyData, templateData] = await Promise.all([
       loadContacts(),
       loadBroadcasts(),
       loadSignupHistory(),
+      loadTemplates(),
     ])
     setContacts(contactData)
     setBroadcasts(broadcastData)
     setSignupHistory(historyData)
+    setTemplates(templateData)
   }, [])
 
   useEffect(() => {
@@ -128,6 +143,64 @@ function AdminBroadcast() {
     !content.body.trim() && 'Text',
   ].filter(Boolean)
   const canSend = missingFields.length === 0
+  const activeTemplate = templates.find((template) => template.id === activeTemplateId)
+  const hasDraft =
+    Boolean(subject.trim() || content.title.trim() || content.body.trim()) || content.attachments.length > 0
+
+  function applyTemplate(id: string) {
+    const template = templates.find((entry) => entry.id === id)
+    if (!template) return
+    setSubject(template.subject)
+    setContent({ ...EMPTY_CONTENT, ...template.content })
+    setActiveTemplateId(id)
+    setPendingTemplateId(null)
+    setConfirmDeleteTemplate(false)
+  }
+
+  function handleSelectTemplate(id: string) {
+    setConfirmDeleteTemplate(false)
+    if (!id) {
+      setActiveTemplateId('')
+      setPendingTemplateId(null)
+    } else if (hasDraft) {
+      setPendingTemplateId(id)
+    } else {
+      applyTemplate(id)
+    }
+  }
+
+  async function handleCreateTemplate() {
+    const name = templateName.trim()
+    await run(async () => {
+      const id = await createTemplate(name, subject, content)
+      await refresh()
+      setActiveTemplateId(id)
+      setTemplateName('')
+      setDraftUploads([])
+      return `Vorlage «${name}» gespeichert.`
+    })
+  }
+
+  async function handleUpdateTemplate() {
+    if (!activeTemplate) return
+    await run(async () => {
+      await updateTemplate(activeTemplate.id, subject, content)
+      await refresh()
+      setDraftUploads([])
+      return `Vorlage «${activeTemplate.name}» aktualisiert.`
+    })
+  }
+
+  async function handleDeleteTemplate() {
+    if (!activeTemplate) return
+    await run(async () => {
+      await deleteTemplate(activeTemplate.id)
+      await refresh()
+      setActiveTemplateId('')
+      setConfirmDeleteTemplate(false)
+      return `Vorlage «${activeTemplate.name}» gelöscht.`
+    })
+  }
 
   async function handleAddContact() {
     const email = normalizeEmail(newContact.email)
@@ -174,13 +247,14 @@ function AdminBroadcast() {
         if (file.size > MAX_ATTACHMENT_BYTES) throw new Error(`${file.name} ist grösser als 10 MB.`)
         const attachment = await uploadAttachment(file)
         setContent((prev) => ({ ...prev, attachments: [...prev.attachments, attachment] }))
+        setDraftUploads((prev) => [...prev, attachment.path])
       }
     })
   }
 
   async function handleRemoveAttachment(path: string) {
     await run(async () => {
-      await removeAttachment(path)
+      if (draftUploads.includes(path)) await removeAttachment(path)
       setContent((prev) => ({ ...prev, attachments: prev.attachments.filter((file) => file.path !== path) }))
     })
   }
@@ -204,6 +278,8 @@ function AdminBroadcast() {
     if (sent) {
       setSubject('')
       setContent(EMPTY_CONTENT)
+      setActiveTemplateId('')
+      setDraftUploads([])
     }
   }
 
@@ -228,6 +304,79 @@ function AdminBroadcast() {
             {/* Neuer Broadcast */}
             <div className="admin-section">
               <h2 className="admin-section-title">Neuer Broadcast</h2>
+              <div className="broadcast-templates">
+                <select
+                  className="admin-input admin-select"
+                  aria-label="Vorlage laden"
+                  disabled={isBusy}
+                  value={pendingTemplateId ?? activeTemplateId}
+                  onChange={(e) => handleSelectTemplate(e.target.value)}
+                >
+                  <option value="">Vorlage laden…</option>
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>{template.name}</option>
+                  ))}
+                </select>
+                {pendingTemplateId ? (
+                  <>
+                    <span className="broadcast-confirm">Aktuellen Entwurf ersetzen?</span>
+                    <button
+                      className="admin-button admin-button-primary"
+                      onClick={() => applyTemplate(pendingTemplateId)}
+                    >
+                      Ja, Vorlage laden
+                    </button>
+                    <button className="admin-button admin-button-secondary" onClick={() => setPendingTemplateId(null)}>
+                      Abbrechen
+                    </button>
+                  </>
+                ) : (
+                  activeTemplate && (
+                    <>
+                      <button
+                        className="admin-button admin-button-secondary"
+                        disabled={isBusy}
+                        onClick={handleUpdateTemplate}
+                      >
+                        Vorlage aktualisieren
+                      </button>
+                      {confirmDeleteTemplate ? (
+                        <button
+                          className="admin-button admin-button-primary"
+                          disabled={isBusy}
+                          onClick={handleDeleteTemplate}
+                        >
+                          Endgültig löschen
+                        </button>
+                      ) : (
+                        <button
+                          className="admin-button admin-button-secondary"
+                          disabled={isBusy}
+                          onClick={() => setConfirmDeleteTemplate(true)}
+                        >
+                          Vorlage löschen
+                        </button>
+                      )}
+                    </>
+                  )
+                )}
+              </div>
+              <div className="broadcast-templates">
+                <input
+                  className="admin-input"
+                  placeholder="Name der Vorlage"
+                  aria-label="Name der Vorlage"
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                />
+                <button
+                  className="admin-button admin-button-secondary"
+                  disabled={isBusy || !templateName.trim()}
+                  onClick={handleCreateTemplate}
+                >
+                  Als Vorlage speichern
+                </button>
+              </div>
               <div className="broadcast-editor">
                 <div className="broadcast-fields">
                   <label className="admin-label" htmlFor="broadcast-subject">Betreff</label>

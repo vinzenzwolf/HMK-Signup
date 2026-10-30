@@ -36,6 +36,13 @@ export type Broadcast = {
   created_at: string
 }
 
+export type BroadcastTemplate = {
+  id: string
+  name: string
+  subject: string
+  content: BroadcastContent
+}
+
 export type SignupHistory = Map<string, Array<{ year: number; athletes: number }>>
 
 export type ImportRow = { email: string; name: string | null; club: string | null }
@@ -108,6 +115,40 @@ export async function loadBroadcasts(): Promise<Broadcast[]> {
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
   return data as Broadcast[]
+}
+
+export async function loadTemplates(): Promise<BroadcastTemplate[]> {
+  const { data, error } = await supabase
+    .from('broadcast_templates')
+    .select('id, name, subject, content')
+    .order('name')
+  if (error) throw new Error(error.message)
+  return data as BroadcastTemplate[]
+}
+
+export async function createTemplate(name: string, subject: string, content: BroadcastContent): Promise<string> {
+  const { data, error } = await supabase
+    .from('broadcast_templates')
+    .insert({ name, subject, content })
+    .select('id')
+    .single()
+  if (error) {
+    throw new Error(error.code === '23505' ? 'Eine Vorlage mit diesem Namen existiert bereits.' : error.message)
+  }
+  return data.id
+}
+
+export async function updateTemplate(id: string, subject: string, content: BroadcastContent): Promise<void> {
+  const { error } = await supabase
+    .from('broadcast_templates')
+    .update({ subject, content, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function deleteTemplate(id: string): Promise<void> {
+  const { error } = await supabase.from('broadcast_templates').delete().eq('id', id)
+  if (error) throw new Error(error.message)
 }
 
 export async function addContact(row: ImportRow): Promise<void> {

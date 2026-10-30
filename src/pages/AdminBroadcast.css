@@ -38,7 +38,8 @@
 .broadcast-actions,
 .broadcast-add,
 .broadcast-filters,
-.broadcast-import-actions {
+.broadcast-import-actions,
+.broadcast-templates {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -49,9 +50,14 @@
   margin-top: 1.5rem;
 }
 
+.broadcast-templates {
+  margin-bottom: 1rem;
+}
+
 .broadcast-actions .admin-input,
 .broadcast-add .admin-input,
-.broadcast-filters .admin-input {
+.broadcast-filters .admin-input,
+.broadcast-templates .admin-input {
   flex: 1 1 180px;
   width: auto;
   min-width: 0;
