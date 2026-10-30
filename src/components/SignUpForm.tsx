@@ -9,7 +9,7 @@ import SubmitButton from './SubmitButton';
 import ExcelTool from './ExcelTool';
 import InformationBanner from './InformationBanner';
 import InvoiceSection from './InvoiceSection';
-import { saveRegistration, updateRegistration, mapChildToAthlete } from '../lib/database';
+import { saveRegistration, updateRegistration, mapChildToAthlete, setAthleteWithdrawn } from '../lib/database';
 import logoSrcUrl from '../assets/SCL_Logo.png';
 
 type SignUpFormProps = {
@@ -26,6 +26,7 @@ type SignUpFormProps = {
   seasonYear?: number
   seasonSignupDeadline?: string | null
   seasonPaymentDeadline?: string | null
+  seasonEventDate?: string | null
   onSaveSuccess?: () => void
 }
 
@@ -39,7 +40,7 @@ function createEmptyChild(): Child {
   };
 }
 
-function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYear, seasonSignupDeadline, seasonPaymentDeadline }: SignUpFormProps = {}) {
+function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYear, seasonSignupDeadline, seasonPaymentDeadline, seasonEventDate }: SignUpFormProps = {}) {
   const isEditMode = !!editToken
   const navigate = useNavigate()
   
@@ -199,6 +200,8 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
   const [savedEditToken, setSavedEditToken] = useState<string | null>(editToken || null)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailError, setEmailError] = useState(false);
+  // Das erste Mail ist fehlgeschlagen: Es wird beim nächsten Speichern nachgeholt
+  const emailPendingRef = useRef(false);
   const [newsletterOptIn, setNewsletterOptIn] = useState(true);
 
   // error banner states
@@ -277,6 +280,46 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
   }, [seasonSignupDeadline])
   const isEditingLocked = isEditMode && isSignupDeadlinePassed
   const isRegistrationLocked = !isEditMode && isSignupDeadlinePassed
+  // Abmeldungen sind bis am Wettkampftag um 09:00 Uhr möglich; die Datenbank prüft die Frist verbindlich
+  const withdrawalDeadline = useMemo(() => {
+    if (!seasonEventDate) return null
+    const deadline = new Date(`${seasonEventDate}T09:00:00`)
+    return Number.isNaN(deadline.getTime()) ? null : deadline
+  }, [seasonEventDate])
+  const isWithdrawalOpen = useMemo(
+    () => isEditingLocked && !!withdrawalDeadline && new Date() < withdrawalDeadline,
+    [isEditingLocked, withdrawalDeadline]
+  )
+
+  // Die Suche gibt es nur im gesperrten Zustand: Beim Speichern dürfen keine Validierungsfehler in ausgeblendeten Karten stecken
+  const [athleteSearch, setAthleteSearch] = useState('')
+  const athleteSearchTerms = athleteSearch.toLowerCase().split(/\s+/).filter(Boolean)
+  const matchesAthleteSearch = (child: Child) => {
+    if (!isEditingLocked) return true
+    const haystack = `${child.vorname} ${child.nachname} ${child.jahrgang}`.toLowerCase()
+    return athleteSearchTerms.every(term => haystack.includes(term))
+  }
+
+  const handleWithdrawalChange = useCallback(
+    async (child: Child, withdrawn: boolean) => {
+      if (!editToken || !child.athleteId) return
+
+      const setWithdrawnAt = (withdrawnAt: string | null | undefined) => {
+        setChildren(prev => prev.map(c => (c.id === child.id ? { ...c, withdrawnAt } : c)))
+      }
+
+      setWithdrawnAt(withdrawn ? new Date().toISOString() : null)
+      try {
+        setWithdrawnAt(await setAthleteWithdrawn(editToken, child.athleteId, withdrawn))
+      } catch (err) {
+        console.error('Failed to update withdrawal:', err)
+        setWithdrawnAt(child.withdrawnAt)
+        setBannerMessage(err instanceof Error ? err.message : 'Abmeldung konnte nicht gespeichert werden.')
+        setBannerVariant('error')
+      }
+    },
+    [editToken]
+  )
   const invoiceDueDate = useMemo(() => {
     if (seasonPaymentDeadline) {
       const d = new Date(seasonPaymentDeadline)
@@ -471,7 +514,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
           phone: phoneNumber.trim(),
           athletes,
           season_id: seasonId,
-        });
+        }, { resendEmail: emailPendingRef.current });
         if (updateResult.edit_token) {
           setSavedEditToken(updateResult.edit_token)
         }
@@ -485,6 +528,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
         }
 
         setEmailError(false); // Clear email error on success
+        emailPendingRef.current = false;
         if (!skipNavigation) {
           setBannerMessage('Anmeldung erfolgreich aktualisiert!');
           setBannerVariant('success');
@@ -507,7 +551,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
           athletes,
           season_id: seasonId,
           newsletter_opt_in: newsletterOptIn,
-        });
+        }, { resendEmail: emailPendingRef.current });
 
         if (result.edit_token) {
           setSavedEditToken(result.edit_token)
@@ -521,6 +565,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
         }
 
         setEmailError(false); // Clear email error on success
+        emailPendingRef.current = false;
         if (!skipNavigation) {
           setBannerMessage('Anmeldung erfolgreich aktualisiert!');
           setBannerVariant('success');
@@ -555,6 +600,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
 
         if (result.email_sent === false) {
           // Saved but email failed — keep user on form to correct address.
+          emailPendingRef.current = true;
           setEmailError(true);
           setTrainerErrors(prev => ({ ...prev, email: true }));
           setBannerMessage('Anmeldung wurde gespeichert, aber die E-Mail konnte nicht gesendet werden. Bitte korrigieren Sie die E-Mail-Adresse.');
@@ -563,6 +609,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
         }
 
         setEmailError(false); // Clear email error on success
+        emailPendingRef.current = false;
         if (!skipNavigation) {
           // Registration is saved and email sent
           setBannerMessage('Anmeldung erfolgreich gespeichert! Eine E-Mail mit dem Bearbeitungslink wurde versendet. Sie werden nun zur Bearbeitungsseite weitergeleitet...');
@@ -599,7 +646,14 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
       const isEmailError = error instanceof Error && (error as any).isEmailError;
       
       if (isEmailError) {
-        // Registration was saved, but email failed
+        // Registration was saved, but email failed: remember it, so a retry updates it instead of creating a duplicate
+        const savedRegistration = (error as Error & { registration?: { id: string; edit_token: string } }).registration;
+        if (savedRegistration) {
+          savedRegistrationIdRef.current = savedRegistration.id;
+          setSavedRegistrationId(savedRegistration.id);
+          setSavedEditToken(savedRegistration.edit_token);
+        }
+        emailPendingRef.current = true;
         setEmailError(true);
         setTrainerErrors(prev => ({
           ...prev,
@@ -641,7 +695,11 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
           )}
           {isEditingLocked && (
             <InformationBanner
-              message="Der Anmeldeschluss ist vorbei. Änderungen sind nicht mehr möglich, die Rechnung kann weiterhin heruntergeladen werden."
+              message={
+                isWithdrawalOpen && withdrawalDeadline
+                  ? `Der Anmeldeschluss ist vorbei. Änderungen sind nicht mehr möglich, Athlet/innen können aber bis am ${withdrawalDeadline.toLocaleDateString('de-CH')} um 09:00 Uhr abgemeldet werden. Die Rechnung bleibt unverändert und kann weiterhin heruntergeladen werden.`
+                  : 'Der Anmeldeschluss ist vorbei. Änderungen und Abmeldungen sind nicht mehr möglich, die Rechnung kann weiterhin heruntergeladen werden.'
+              }
               variant="info"
             />
           )}
@@ -763,7 +821,25 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
             />
 
 
-            {children.map((child, index) => (
+            {isEditingLocked && (
+              <div className="athlete-search">
+                <FormField
+                  id="athleteSearch"
+                  name="athleteSearch"
+                  label="Athlet/in suchen"
+                  placeholder="Name oder Jahrgang"
+                  value={athleteSearch}
+                  required={false}
+                  onChange={(e) => setAthleteSearch(e.target.value)}
+                />
+              </div>
+            )}
+
+            {!children.some(matchesAthleteSearch) && (
+              <p className="athlete-search-empty">Keine Athlet/innen gefunden.</p>
+            )}
+
+            {children.map((child, index) => matchesAthleteSearch(child) && (
               <ChildCard
                 key={child.id}
                 child={child}
@@ -773,6 +849,9 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
                 disableRemove={children.length === 1}
                 errors={childErrors[child.id]}
                 disabled={isEditingLocked || isRegistrationLocked}
+                showWithdrawal={isEditingLocked && !!child.athleteId}
+                withdrawalDisabled={!isWithdrawalOpen}
+                onWithdrawalChange={handleWithdrawalChange}
               />
             ))}
 

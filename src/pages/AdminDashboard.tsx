@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
+import Tag from '../components/Tag'
 import { supabase } from '../lib/supabase'
 import InformationBanner from '../components/InformationBanner'
 import './SignupPage.css'
 import './AdminDashboard.css'
 import type { Season } from '../lib/database'
+import {
+  CONFIRMATION_PLACEHOLDERS,
+  DEFAULT_CONFIRMATION_BODY,
+  DEFAULT_CONFIRMATION_SUBJECT,
+  EDIT_LINK_PLACEHOLDER,
+  renderConfirmationEmail,
+} from '../../supabase/functions/_shared/confirmationEmail'
 
 type Athlete = {
   id: string
@@ -11,6 +19,7 @@ type Athlete = {
   last_name: string
   birth_year: number
   gender: 'm' | 'w'
+  withdrawn_at?: string | null
 }
 
 type Registration = {
@@ -61,13 +70,11 @@ function AdminDashboard() {
   const [isSeasonEditExpanded, setIsSeasonEditExpanded] = useState(false)
   const [isStatisticsExpanded, setIsStatisticsExpanded] = useState(true)
   const [isRegistrationsExpanded, setIsRegistrationsExpanded] = useState(true)
+  const [isWithdrawalsExpanded, setIsWithdrawalsExpanded] = useState(true)
+  const [isConfirmationEmailExpanded, setIsConfirmationEmailExpanded] = useState(false)
+  const [confirmationSubject, setConfirmationSubject] = useState(DEFAULT_CONFIRMATION_SUBJECT)
+  const [confirmationBody, setConfirmationBody] = useState(DEFAULT_CONFIRMATION_BODY)
   const [expandedAthletes, setExpandedAthletes] = useState<Set<string>>(new Set())
-  const [showEmailModal, setShowEmailModal] = useState(false)
-  const [emailSubject, setEmailSubject] = useState('')
-  const [emailBody, setEmailBody] = useState('')
-  const [pdfAttachment, setPdfAttachment] = useState<File | null>(null)
-  const [isDraggingPdf, setIsDraggingPdf] = useState(false)
-  const [isSendingEmail, setIsSendingEmail] = useState(false)
   const [editSeasonForm, setEditSeasonForm] = useState({
     year: new Date().getFullYear(),
     event_date: '',
@@ -88,16 +95,26 @@ function AdminDashboard() {
     () => seasons.find((s) => s.id === selectedSeasonId) || null,
     [seasons, selectedSeasonId]
   )
-  const seasonTrainerEmails = useMemo(() => {
-    const uniqueEmails = new Set<string>()
-    registrations.forEach((reg) => {
-      const email = reg.email?.trim().toLowerCase()
-      if (email) {
-        uniqueEmails.add(email)
+
+  const confirmationPreview = useMemo(() => {
+    if (!selectedSeason) return null
+    const editLink = `${window.location.origin}/${selectedSeason.year}/edit/beispiel`
+    return renderConfirmationEmail(selectedSeason, { subject: confirmationSubject, body: confirmationBody }, editLink)
+  }, [selectedSeason, confirmationSubject, confirmationBody])
+
+  useEffect(() => {
+    async function loadConfirmationEmail() {
+      const { data, error } = await supabase.from('confirmation_email').select('subject, body').maybeSingle()
+      if (error) {
+        console.error('Error loading confirmation email:', error)
+        return
       }
-    })
-    return Array.from(uniqueEmails)
-  }, [registrations])
+      setConfirmationSubject(data?.subject ?? DEFAULT_CONFIRMATION_SUBJECT)
+      setConfirmationBody(data?.body ?? DEFAULT_CONFIRMATION_BODY)
+    }
+
+    loadConfirmationEmail()
+  }, [])
 
   useEffect(() => {
     if (selectedSeason) {
@@ -167,7 +184,8 @@ function AdminDashboard() {
 
   function calculateStatistics() {
     const totalRegistrations = registrations.length
-    const totalAthletes = registrations.reduce((sum, reg) => sum + reg.athletes.length, 0)
+    const activeAthletes = registrations.flatMap(reg => reg.athletes.filter(athlete => !athlete.withdrawn_at))
+    const totalAthletes = activeAthletes.length
     const clubs = new Map<string, number>()
     const athletesByGender = { m: 0, w: 0 }
     const athletesByCategory = {
@@ -185,32 +203,33 @@ function AdminDashboard() {
       if (reg.club) {
         clubs.set(reg.club, (clubs.get(reg.club) || 0) + 1)
       }
-      reg.athletes.forEach(athlete => {
-        if (athlete.gender === 'm') athletesByGender.m++
-        if (athlete.gender === 'w') athletesByGender.w++
-        athletesByYear[athlete.birth_year] = (athletesByYear[athlete.birth_year] || 0) + 1
+    })
 
-        // Kategorien nach Jahrgang
-        // U10: Jahr >= currentYear - 9 (jüngere bleiben U10)
-        // U12: Jahr == currentYear - 11 oder -10
-        // U14: Jahr == currentYear - 13 oder -12
-        if (athlete.birth_year >= currentYear - 9) {
-          if (athlete.gender === 'm') athletesByCategory.u10_m++
-          if (athlete.gender === 'w') athletesByCategory.u10_w++
-        } else if (
-          athlete.birth_year === currentYear - 10 ||
-          athlete.birth_year === currentYear - 11
-        ) {
-          if (athlete.gender === 'm') athletesByCategory.u12_m++
-          if (athlete.gender === 'w') athletesByCategory.u12_w++
-        } else if (
-          athlete.birth_year === currentYear - 12 ||
-          athlete.birth_year === currentYear - 13
-        ) {
-          if (athlete.gender === 'm') athletesByCategory.u14_m++
-          if (athlete.gender === 'w') athletesByCategory.u14_w++
-        }
-      })
+    activeAthletes.forEach(athlete => {
+      if (athlete.gender === 'm') athletesByGender.m++
+      if (athlete.gender === 'w') athletesByGender.w++
+      athletesByYear[athlete.birth_year] = (athletesByYear[athlete.birth_year] || 0) + 1
+
+      // Kategorien nach Jahrgang
+      // U10: Jahr >= currentYear - 9 (jüngere bleiben U10)
+      // U12: Jahr == currentYear - 11 oder -10
+      // U14: Jahr == currentYear - 13 oder -12
+      if (athlete.birth_year >= currentYear - 9) {
+        if (athlete.gender === 'm') athletesByCategory.u10_m++
+        if (athlete.gender === 'w') athletesByCategory.u10_w++
+      } else if (
+        athlete.birth_year === currentYear - 10 ||
+        athlete.birth_year === currentYear - 11
+      ) {
+        if (athlete.gender === 'm') athletesByCategory.u12_m++
+        if (athlete.gender === 'w') athletesByCategory.u12_w++
+      } else if (
+        athlete.birth_year === currentYear - 12 ||
+        athlete.birth_year === currentYear - 13
+      ) {
+        if (athlete.gender === 'm') athletesByCategory.u14_m++
+        if (athlete.gender === 'w') athletesByCategory.u14_w++
+      }
     })
 
     const clubsArray = Array.from(clubs.entries())
@@ -306,7 +325,8 @@ function AdminDashboard() {
             first_name,
             last_name,
             birth_year,
-            gender
+            gender,
+            withdrawn_at
           )
         `)
         .eq('season_id', activeSeasonId)
@@ -344,7 +364,7 @@ function AdminDashboard() {
       return
     }
 
-    const header = ['Name', 'Vorname', 'Jahrgang', 'Verein', 'Geschlecht']
+    const header = ['Name', 'Vorname', 'Jahrgang', 'Verein', 'Geschlecht', 'Abgemeldet']
 
     const csvDelimiter = ';'
     const csvNewline = '\r\n'
@@ -364,6 +384,7 @@ function AdminDashboard() {
         athlete.birth_year,
         reg.club || '',
         athlete.gender?.toUpperCase() === 'M' ? 'M' : 'W',
+        athlete.withdrawn_at ? 'Ja' : '',
       ])
     )
 
@@ -498,6 +519,37 @@ function AdminDashboard() {
     } catch (err) {
       console.error('Error updating season:', err)
       setError(err instanceof Error ? err.message : 'Fehler beim Aktualisieren der Saison')
+    }
+  }
+
+  async function handleSaveConfirmationEmail() {
+    if (!confirmationSubject.trim() || !confirmationBody.trim()) {
+      setError('Bitte Betreff und Text ausfüllen.')
+      return
+    }
+    if (!confirmationBody.includes(EDIT_LINK_PLACEHOLDER)) {
+      setError(`Der Text muss ${EDIT_LINK_PLACEHOLDER} enthalten, sonst fehlt der Link zur Bearbeitung.`)
+      return
+    }
+
+    try {
+      setError(null)
+      const subject = confirmationSubject.trim()
+      const body = confirmationBody.trim()
+      const { error } = await supabase.from('confirmation_email').upsert({
+        id: true,
+        subject: subject === DEFAULT_CONFIRMATION_SUBJECT ? null : subject,
+        body: body === DEFAULT_CONFIRMATION_BODY ? null : body,
+        updated_at: new Date().toISOString(),
+      })
+
+      if (error) throw error
+
+      setSuccessMessage('Bestätigungsmail gespeichert.')
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch (err) {
+      console.error('Error saving confirmation email:', err)
+      setError(err instanceof Error ? err.message : 'Fehler beim Speichern des Bestätigungsmails')
     }
   }
 
@@ -698,6 +750,7 @@ function AdminDashboard() {
           last_name: athlete.last_name,
           birth_year: athlete.birth_year,
           gender: athlete.gender,
+          withdrawn_at: athlete.withdrawn_at ?? null,
         }))
 
         const { error: athletesError } = await supabase
@@ -796,6 +849,7 @@ function AdminDashboard() {
           last_name: athlete.last_name,
           birth_year: athlete.birth_year,
           gender: athlete.gender,
+          withdrawn_at: athlete.withdrawn_at ?? null,
         }))
 
         const { error: athletesError } = await supabase
@@ -819,6 +873,14 @@ function AdminDashboard() {
     }
   }
 
+  const withdrawnAthletes = registrations
+    .flatMap(reg =>
+      reg.athletes
+        .filter(athlete => athlete.withdrawn_at)
+        .map(athlete => ({ ...athlete, withdrawn_at: athlete.withdrawn_at as string, registration: reg }))
+    )
+    .sort((a, b) => b.withdrawn_at.localeCompare(a.withdrawn_at))
+
   function formatDate(dateString: string) {
     const date = new Date(dateString)
     return date.toLocaleDateString('de-CH', {
@@ -837,116 +899,6 @@ function AdminDashboard() {
       return `${baseUrl}/${selectedSeason.year}/edit/${token}`
     }
     return `${baseUrl}/edit/${token}`
-  }
-
-  function formatEmailHtml(text: string) {
-    const escaped = text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-    const withBreaks = escaped.replace(/\n/g, '<br />')
-    return `<div style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.5; color: var(--brand-dark);">${withBreaks}</div>`
-  }
-
-  function readFileAsBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => {
-        const result = reader.result?.toString() || ''
-        const [, base64] = result.split(',')
-        resolve(base64 || result)
-      }
-      reader.onerror = () => reject(new Error('PDF konnte nicht gelesen werden.'))
-      reader.readAsDataURL(file)
-    })
-  }
-
-  function sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms))
-  }
-
-  function handlePdfSelection(file: File | null) {
-    if (!file) {
-      setPdfAttachment(null)
-      return
-    }
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
-    if (!isPdf) {
-      setError('Bitte eine PDF-Datei auswählen.')
-      return
-    }
-    setError(null)
-    setPdfAttachment(file)
-  }
-
-  async function handleSendSeasonEmail() {
-    if (!seasonTrainerEmails.length) {
-      setError('Keine Trainer-E-Mails für diese Saison gefunden.')
-      return
-    }
-    if (!emailSubject.trim() || !emailBody.trim()) {
-      setError('Bitte Betreff und E-Mail-Text ausfüllen.')
-      return
-    }
-
-    try {
-      setIsSendingEmail(true)
-      setError(null)
-      setSuccessMessage(null)
-
-      let attachment: { filename: string; content: string } | null = null
-      if (pdfAttachment) {
-        const base64 = await readFileAsBase64(pdfAttachment)
-        attachment = {
-          filename: pdfAttachment.name,
-          content: base64,
-        }
-      }
-
-      const html = formatEmailHtml(emailBody.trim())
-      const results: Array<{ email: string; ok: boolean }> = []
-
-      for (let index = 0; index < seasonTrainerEmails.length; index += 1) {
-        const email = seasonTrainerEmails[index]
-        try {
-          const result = await supabase.functions.invoke('resend-email', {
-            body: {
-              to: email,
-              subject: emailSubject.trim(),
-              html,
-              attachments: attachment ? [attachment] : undefined,
-            },
-          })
-          results.push({ email, ok: !result?.error })
-        } catch (err) {
-          results.push({ email, ok: false })
-        }
-
-        if (index < seasonTrainerEmails.length - 1) {
-          await sleep(600)
-        }
-      }
-
-      const failures = results.filter((result) => !result.ok)
-      const successCount = seasonTrainerEmails.length - failures.length
-
-      if (failures.length > 0) {
-        setError(
-          `E-Mail wurde an ${successCount} von ${seasonTrainerEmails.length} Empfängern gesendet. Bitte erneut versuchen oder prüfen.`
-        )
-      } else {
-        setSuccessMessage(`E-Mail wurde an ${seasonTrainerEmails.length} Trainer gesendet.`)
-        setShowEmailModal(false)
-        setEmailSubject('')
-        setEmailBody('')
-        setPdfAttachment(null)
-      }
-    } catch (err) {
-      console.error('Error sending bulk email:', err)
-      setError(err instanceof Error ? err.message : 'Fehler beim Senden der E-Mail')
-    } finally {
-      setIsSendingEmail(false)
-    }
   }
 
   if (isLoadingSeasons || isLoading) {
@@ -1247,182 +1199,6 @@ function AdminDashboard() {
             </div>
           )}
 
-          {showEmailModal && (
-            <div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                backgroundColor: 'rgba(15, 23, 42, 0.45)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 1100,
-                padding: '1rem',
-              }}
-              onClick={() => setShowEmailModal(false)}
-            >
-              <div
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  width: 'min(900px, 100%)',
-                  background: '#ffffff',
-                  borderRadius: 16,
-                  padding: '1.5rem',
-                  boxShadow: '0 20px 60px rgba(15, 23, 42, 0.25)',
-                  border: '1px solid #e2e8f0',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.75rem' }}>
-                  <div>
-                    <h2 className="admin-section-title" style={{ margin: 0 }}>E-Mail an alle Trainer</h2>
-                    <p style={{ margin: '0.25rem 0 0', color: '#64748b' }}>
-                      {seasonTrainerEmails.length} Empfänger in der aktuellen Saison
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowEmailModal(false)}
-                    style={{
-                      padding: '0.45rem 0.9rem',
-                      backgroundColor: '#e2e8f0',
-                      border: 'none',
-                      borderRadius: 10,
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                      color: 'var(--brand-dark)',
-                    }}
-                  >
-                    Schließen
-                  </button>
-                </div>
-
-                <div style={{ display: 'grid', gap: '1rem' }}>
-                  <div>
-                    <label className="admin-label">Betreff</label>
-                    <input
-                      type="text"
-                      value={emailSubject}
-                      onChange={(e) => setEmailSubject(e.target.value)}
-                      className="admin-input"
-                      placeholder="Betreff der E-Mail"
-                    />
-                  </div>
-                  <div>
-                    <label className="admin-label">E-Mail Text</label>
-                    <textarea
-                      value={emailBody}
-                      onChange={(e) => setEmailBody(e.target.value)}
-                      placeholder="Schreibe hier deinen Text..."
-                      rows={8}
-                      style={{
-                        width: '100%',
-                        borderRadius: 12,
-                        border: '1px solid #e2e8f0',
-                        padding: '0.85rem 1rem',
-                        fontSize: '0.95rem',
-                        fontFamily: 'inherit',
-                        resize: 'vertical',
-                      }}
-                    />
-                    <p style={{ marginTop: '0.5rem', color: '#64748b', fontSize: '0.85rem' }}>
-                      Hinweis: Versand erfolgt einzeln mit max. 2 E-Mails pro Sekunde. Resend erlaubt bis zu 100
-                      E-Mails pro Tag (einzelne Empfänger).
-                    </p>
-                  </div>
-                  <div>
-                    <label className="admin-label">PDF Anhang (optional)</label>
-                    <div
-                      onDragOver={(e) => {
-                        e.preventDefault()
-                        setIsDraggingPdf(true)
-                      }}
-                      onDragLeave={() => setIsDraggingPdf(false)}
-                      onDrop={(e) => {
-                        e.preventDefault()
-                        setIsDraggingPdf(false)
-                        handlePdfSelection(e.dataTransfer.files?.[0] || null)
-                      }}
-                      style={{
-                        border: `2px dashed ${isDraggingPdf ? 'var(--brand-dark)' : '#cbd5e1'}`,
-                        borderRadius: 12,
-                        padding: '1.25rem',
-                        background: isDraggingPdf ? 'var(--brand-gray)' : '#f8fafc',
-                        textAlign: 'center',
-                        color: '#475569',
-                      }}
-                    >
-                      <input
-                        type="file"
-                        accept="application/pdf"
-                        onChange={(e) => handlePdfSelection(e.target.files?.[0] || null)}
-                        style={{ display: 'none' }}
-                        id="admin-email-pdf"
-                      />
-                      <label htmlFor="admin-email-pdf" style={{ cursor: 'pointer' }}>
-                        {pdfAttachment ? (
-                          <strong style={{ color: 'var(--brand-dark)' }}>{pdfAttachment.name}</strong>
-                        ) : (
-                          <span>PDF hierher ziehen oder klicken zum Auswählen</span>
-                        )}
-                      </label>
-                      {pdfAttachment && (
-                        <div style={{ marginTop: '0.75rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => setPdfAttachment(null)}
-                            style={{
-                              padding: '0.4rem 0.8rem',
-                              backgroundColor: '#fee2e2',
-                              border: 'none',
-                              borderRadius: 8,
-                              cursor: 'pointer',
-                              fontWeight: 600,
-                              color: '#b91c1c',
-                            }}
-                          >
-                            Entfernen
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
-                    <button
-                      type="button"
-                      onClick={() => setShowEmailModal(false)}
-                      style={{
-                        padding: '0.75rem 1.1rem',
-                        backgroundColor: '#e2e8f0',
-                        color: 'var(--brand-dark)',
-                        border: 'none',
-                        borderRadius: '999px',
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                      }}
-                    >
-                      Abbrechen
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSendSeasonEmail}
-                      disabled={isSendingEmail}
-                      style={{
-                        padding: '0.75rem 1.25rem',
-                        backgroundColor: isSendingEmail ? 'var(--brand-dark-hover)' : 'var(--brand-dark)',
-                        color: 'var(--brand-yellow)',
-                        border: 'none',
-                        borderRadius: '999px',
-                        cursor: isSendingEmail ? 'not-allowed' : 'pointer',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {isSendingEmail ? 'Sende...' : 'E-Mail senden'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="admin-section">
             <div 
               style={{ 
@@ -1533,6 +1309,114 @@ function AdminDashboard() {
             </div>
             )}
           </div>
+
+          {/* Confirmation email */}
+          <div className="admin-section">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem',
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+              onClick={() => setIsConfirmationEmailExpanded(!isConfirmationEmailExpanded)}
+            >
+              <h2 className="admin-section-title" style={{ margin: 0 }}>Bestätigungsmail</h2>
+              <span style={{
+                fontSize: '1.25rem',
+                transition: 'transform 0.2s',
+                transform: isConfirmationEmailExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+              }}>
+                ▼
+              </span>
+            </div>
+            {isConfirmationEmailExpanded && (
+              <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>
+                  Wird einmalig nach der Anmeldung versendet und gilt für alle Saisons.
+                  Platzhalter: {CONFIRMATION_PLACEHOLDERS.join(', ')}. {EDIT_LINK_PLACEHOLDER} ist Pflicht.
+                </p>
+                <div>
+                  <label className="admin-label">Betreff</label>
+                  <input
+                    type="text"
+                    value={confirmationSubject}
+                    onChange={(e) => setConfirmationSubject(e.target.value)}
+                    className="admin-input"
+                  />
+                </div>
+                <div>
+                  <label className="admin-label">Text</label>
+                  <textarea
+                    value={confirmationBody}
+                    onChange={(e) => setConfirmationBody(e.target.value)}
+                    rows={12}
+                    style={{
+                      width: '100%',
+                      borderRadius: 12,
+                      border: '1px solid #e2e8f0',
+                      padding: '0.85rem 1rem',
+                      fontSize: '0.95rem',
+                      fontFamily: 'inherit',
+                      resize: 'vertical',
+                    }}
+                  />
+                </div>
+                {confirmationPreview && (
+                  <div>
+                    <label className="admin-label">Vorschau</label>
+                    <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--brand-dark)' }}>
+                      <strong>Betreff:</strong> {confirmationPreview.subject}
+                    </p>
+                    <iframe
+                      title="Vorschau Bestätigungsmail"
+                      sandbox=""
+                      srcDoc={`<body style="font-family: Arial, sans-serif;">${confirmationPreview.html}</body>`}
+                      style={{ width: '100%', height: 360, border: '1px solid #e2e8f0', borderRadius: 12, background: '#ffffff' }}
+                    />
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmationSubject(DEFAULT_CONFIRMATION_SUBJECT)
+                      setConfirmationBody(DEFAULT_CONFIRMATION_BODY)
+                    }}
+                    style={{
+                      padding: '0.75rem 1.25rem',
+                      backgroundColor: '#e2e8f0',
+                      color: 'var(--brand-dark)',
+                      border: 'none',
+                      borderRadius: '999px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Auf Standardtext zurücksetzen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveConfirmationEmail}
+                    style={{
+                      padding: '0.75rem 1.25rem',
+                      backgroundColor: 'var(--brand-dark)',
+                      color: 'var(--brand-yellow)',
+                      border: 'none',
+                      borderRadius: '999px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Bestätigungsmail speichern
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Statistics Section - First */}
           <div className="admin-section">
             <div 
@@ -1545,7 +1429,7 @@ function AdminDashboard() {
               }}
               onClick={() => setIsStatisticsExpanded(!isStatisticsExpanded)}
             >
-              <h2 className="admin-section-title" style={{ margin: 0 }}>Statistiken</h2>
+              <h2 className="admin-section-title" style={{ margin: 0 }}>Statistiken (ohne Abmeldungen)</h2>
               <span style={{ 
                 fontSize: '1.25rem', 
                 transition: 'transform 0.2s',
@@ -1619,6 +1503,66 @@ function AdminDashboard() {
 
           {/* Divider */}
           {statistics && <div className="admin-divider" />}
+
+          {/* Withdrawn athletes */}
+          <div className="admin-section" style={{ marginBottom: '2rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1.5rem',
+                gap: '1rem',
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+              onClick={() => setIsWithdrawalsExpanded(!isWithdrawalsExpanded)}
+            >
+              <h2 style={{ margin: 0, color: 'var(--brand-dark)', fontSize: '1.5rem', fontWeight: 700 }}>
+                Abmeldungen ({withdrawnAthletes.length})
+              </h2>
+              <span style={{
+                fontSize: '1.25rem',
+                transition: 'transform 0.2s',
+                transform: isWithdrawalsExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+              }}>
+                ▼
+              </span>
+            </div>
+            {isWithdrawalsExpanded && withdrawnAthletes.length === 0 && (
+              <p className="admin-empty-athletes">Keine Abmeldungen</p>
+            )}
+            {isWithdrawalsExpanded && withdrawnAthletes.length > 0 && (
+              <div className="admin-withdrawn-table-wrapper">
+                <table className="admin-withdrawn-table">
+                  <thead>
+                    <tr>
+                      <th>Nachname</th>
+                      <th>Vorname</th>
+                      <th>Jahrgang</th>
+                      <th>Geschlecht</th>
+                      <th>Verein</th>
+                      <th>Trainer/in</th>
+                      <th>Abgemeldet am</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {withdrawnAthletes.map((athlete) => (
+                      <tr key={athlete.id}>
+                        <td>{athlete.last_name}</td>
+                        <td>{athlete.first_name}</td>
+                        <td>{athlete.birth_year}</td>
+                        <td>{athlete.gender === 'm' ? 'M' : 'W'}</td>
+                        <td>{athlete.registration.club || '-'}</td>
+                        <td>{athlete.registration.guardian_name}</td>
+                        <td>{formatDate(athlete.withdrawn_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
 
           {/* Registrations List with integrated search */}
           {/* Header with search integrated */}
@@ -1698,35 +1642,6 @@ function AdminDashboard() {
                   }}
                 >
                   Anmeldungen als CSV exportieren
-                </button>
-                <button
-                  onClick={() => {
-                    setShowEmailModal(true)
-                    setEmailSubject('')
-                    setEmailBody('')
-                    setPdfAttachment(null)
-                  }}
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    backgroundColor: '#16a34a',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '12px',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontSize: '0.9375rem',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#15803d'
-                    e.currentTarget.style.transform = 'translateY(-1px)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#16a34a'
-                    e.currentTarget.style.transform = 'translateY(0)'
-                  }}
-                >
-                  E-Mail an alle Trainer
                 </button>
               </div>
             </div>
@@ -2087,6 +2002,39 @@ function AdminDashboard() {
                               </span>
                             )}
                           </div>
+                          {!isEditingRegistration && athlete.withdrawn_at && (
+                            <div className="admin-athlete-field">
+                              <strong className="admin-label-small admin-label-hidden">
+                                Status
+                              </strong>
+                              <div>
+                                <Tag>Abgemeldet</Tag>
+                              </div>
+                            </div>
+                          )}
+                          {isEditingRegistration && (
+                            <div className="admin-athlete-field">
+                              <strong className="admin-label-small">
+                                Abgemeldet
+                              </strong>
+                              <input
+                                type="checkbox"
+                                className="admin-withdrawn-checkbox"
+                                aria-label={`${athlete.first_name} ${athlete.last_name} abgemeldet`}
+                                checked={!!athlete.withdrawn_at}
+                                onChange={(e) => {
+                                  const withdrawnAt = e.target.checked ? new Date().toISOString() : null
+                                  const newRegs = registrations.map(r => ({
+                                    ...r,
+                                    athletes: r.athletes.map(a =>
+                                      a.id === athlete.id ? { ...a, withdrawn_at: withdrawnAt } : a
+                                    )
+                                  }))
+                                  setRegistrations(newRegs)
+                                }}
+                              />
+                            </div>
+                          )}
                           {isEditingRegistration && (
                             <div className="admin-athlete-field">
                               <strong className="admin-label-small admin-label-hidden">

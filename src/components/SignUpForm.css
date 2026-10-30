@@ -145,3 +145,13 @@ section:first-of-type {
   font-size: 0.875rem;
   line-height: 1.4;
 }
+
+.athlete-search {
+  margin-bottom: 1rem;
+}
+
+.athlete-search-empty {
+  margin: 1rem 0;
+  color: #475569;
+  font-size: 0.875rem;
+}

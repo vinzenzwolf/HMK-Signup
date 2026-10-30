@@ -31,3 +31,12 @@
   color: var(--brand-border);
   cursor: not-allowed;
 }
+.child-withdrawal {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  color: #475569;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}

@@ -24,6 +24,9 @@ type ChildCardProps = {
   disableRemove: boolean;
   errors?: ChildErrors;
   disabled?: boolean;
+  showWithdrawal?: boolean;
+  withdrawalDisabled?: boolean;
+  onWithdrawalChange?: (child: Child, withdrawn: boolean) => void;
 };
 
 const ChildCard = memo(function ChildCard({
@@ -34,6 +37,9 @@ const ChildCard = memo(function ChildCard({
   disableRemove,
   errors,
   disabled = false,
+  showWithdrawal = false,
+  withdrawalDisabled = false,
+  onWithdrawalChange,
 }: ChildCardProps) {
     return (
     <article className="child-card">
@@ -116,6 +122,18 @@ const ChildCard = memo(function ChildCard({
           }}>
             ⚠️ Dieser Name existiert bereits bei einem anderen Athleten/ einer anderen Athletin.
           </div>
+        )}
+
+        {showWithdrawal && (
+          <label className="child-withdrawal">
+            <input
+              type="checkbox"
+              checked={!!child.withdrawnAt}
+              disabled={withdrawalDisabled}
+              onChange={(e) => onWithdrawalChange?.(child, e.target.checked)}
+            />
+            Athlet/in abmelden
+          </label>
         )}
 
     </article>

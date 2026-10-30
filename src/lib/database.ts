@@ -50,6 +50,7 @@ export type RegistrationWithAthletes = {
     last_name: string
     birth_year: number
     gender: 'm' | 'w'
+    withdrawn_at: string | null
   }>
 }
 
@@ -90,7 +91,8 @@ export async function loadRegistrationByToken(editToken: string): Promise<Regist
  */
 export async function updateRegistration(
   editToken: string,
-  data: RegistrationData
+  data: RegistrationData,
+  { resendEmail = false }: { resendEmail?: boolean } = {}
 ): Promise<RegistrationResult> {
   // Deadline is enforced in the database function
   const { data: result, error } = await supabase.rpc('update_registration_by_token', {
@@ -104,15 +106,18 @@ export async function updateRegistration(
 
   const registration = result as RegistrationRpcResult
 
-  // After successful update, attempt to send the edit-link email.
-  // If sending fails, we do NOT rollback — caller will be informed via the
-  // `email_sent` flag so the UI can prompt the user to correct the address.
-  let emailSent = true
-  try {
-    await sendEditLinkEmail(data.email, registration.edit_token)
-  } catch (err) {
-    console.error('Failed to send edit-link email after update:', err)
-    emailSent = false
+  // Updates are silent. The e-mail is only sent again when the first one failed, otherwise
+  // the trainer would never receive the edit link. If it fails again, we do NOT rollback —
+  // caller will be informed via the `email_sent` flag so the UI can prompt for a correction.
+  let emailSent: boolean | undefined
+  if (resendEmail) {
+    try {
+      await sendEditLinkEmail(data.email, registration.edit_token)
+      emailSent = true
+    } catch (err) {
+      console.error('Failed to send edit-link email after update:', err)
+      emailSent = false
+    }
   }
 
   return {
@@ -120,6 +125,28 @@ export async function updateRegistration(
     edit_token: registration.edit_token,
     email_sent: emailSent,
   }
+}
+
+/**
+ * Withdraws an athlete or reverts the withdrawal. Returns the stored withdrawal timestamp.
+ */
+export async function setAthleteWithdrawn(
+  editToken: string,
+  athleteId: string,
+  withdrawn: boolean
+): Promise<string | null> {
+  // Withdrawal window is enforced in the database function
+  const { data, error } = await supabase.rpc('set_athlete_withdrawn', {
+    p_edit_token: editToken,
+    p_athlete_id: athleteId,
+    p_withdrawn: withdrawn,
+  })
+
+  if (error) {
+    throw new Error(error.message || 'Abmeldung konnte nicht gespeichert werden.')
+  }
+
+  return (data as string | null) ?? null
 }
 
 export async function saveRegistration(data: RegistrationData): Promise<RegistrationResult> {
@@ -148,13 +175,13 @@ export async function saveRegistration(data: RegistrationData): Promise<Registra
     // Re-throw email errors so the UI can handle them
     // Registration was successful, but user should be able to correct email
     if (error instanceof Error && (error as any).isEmailError) {
-      throw error
+      throw Object.assign(error, { registration })
     }
     // For other errors, still throw but mark as email error
     const emailError = new Error(`E-Mail konnte nicht versendet werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`)
     ;(emailError as any).isEmailError = true
     ;(emailError as any).emailAddress = data.email
-    throw emailError
+    throw Object.assign(emailError, { registration })
   }
 
   return {
@@ -246,13 +273,15 @@ export async function createSeason(season: Omit<Season, 'id' | 'created_at' | 'i
   return data as Season
 }
 
-export function mapAthleteToChild(athlete: { first_name: string; last_name: string; birth_year: number; gender: 'm' | 'w' }): Child {
+export function mapAthleteToChild(athlete: { id: string; first_name: string; last_name: string; birth_year: number; gender: 'm' | 'w'; withdrawn_at: string | null }): Child {
   return {
     id: crypto.randomUUID(),
     vorname: athlete.first_name,
     nachname: athlete.last_name,
     jahrgang: athlete.birth_year.toString(),
     geschlecht: athlete.gender.toUpperCase() as 'M' | 'W',
+    athleteId: athlete.id,
+    withdrawnAt: athlete.withdrawn_at,
   }
 }
 

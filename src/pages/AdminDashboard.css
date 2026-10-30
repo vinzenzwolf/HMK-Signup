@@ -702,3 +702,34 @@
   }
 }
 
+
+.admin-withdrawn-table-wrapper {
+  overflow-x: auto;
+}
+
+.admin-withdrawn-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  color: var(--brand-dark);
+}
+
+.admin-withdrawn-table th,
+.admin-withdrawn-table td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.admin-withdrawn-table th {
+  font-weight: 600;
+  color: #64748b;
+}
+
+.admin-withdrawn-checkbox {
+  align-self: flex-start;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+}

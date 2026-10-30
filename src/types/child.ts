@@ -6,4 +6,6 @@ export type Child = {
   nachname: string;
   jahrgang: string;
   geschlecht: Gender;
+  athleteId?: string;
+  withdrawnAt?: string | null;
 };

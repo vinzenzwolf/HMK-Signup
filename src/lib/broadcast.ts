@@ -1,5 +1,6 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import type { Season } from './database'
 
 export type ContactStatus = 'subscribed' | 'unsubscribed' | 'declined' | 'bounced' | 'complained'
 export type ContactSource = 'legacy_registration' | 'registration_optin' | 'registration_declined' | 'csv_import' | 'manual'
@@ -266,6 +267,33 @@ const escapeHtml = (value: string) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
+
+export const BROADCAST_PLACEHOLDERS = ['{{wettkampfnummer}}', '{{wettkampfdatum}}', '{{anmeldeschluss}}', '{{zahlungsfrist}}']
+
+const formatSeasonDate = (value: string) => value.split('-').reverse().join('.')
+
+export const usesBroadcastPlaceholders = (subject: string, content: BroadcastContent) =>
+  BROADCAST_PLACEHOLDERS.some((placeholder) =>
+    [subject, content.title, content.body, content.buttonLabel].some((text) => text.includes(placeholder))
+  )
+
+// Vorlagen behalten die Platzhalter, ersetzt wird erst für Vorschau und Versand
+export function fillBroadcastPlaceholders(subject: string, content: BroadcastContent, season: Season | null) {
+  if (!season) return { subject, content }
+
+  const values: Record<string, string> = {
+    '{{wettkampfnummer}}': String(season.event_number),
+    '{{wettkampfdatum}}': formatSeasonDate(season.event_date),
+    '{{anmeldeschluss}}': formatSeasonDate(season.signup_deadline),
+    '{{zahlungsfrist}}': formatSeasonDate(season.payment_deadline),
+  }
+  const fill = (text: string) => BROADCAST_PLACEHOLDERS.reduce((result, key) => result.replaceAll(key, values[key]), text)
+
+  return {
+    subject: fill(subject),
+    content: { ...content, title: fill(content.title), body: fill(content.body), buttonLabel: fill(content.buttonLabel) },
+  }
+}
 
 const LINK_COLOR = '#303340'
 

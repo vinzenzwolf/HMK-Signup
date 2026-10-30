@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import InformationBanner from '../components/InformationBanner'
 import { UsageBar } from '../components/ServiceStatus'
 import { useAdminRoles } from '../lib/adminRoles'
+import { loadActiveSeason, type Season } from '../lib/database'
 import {
+  BROADCAST_PLACEHOLDERS,
   SOURCE_LABELS,
   STATUS_LABELS,
   addContact,
@@ -10,6 +12,7 @@ import {
   createTemplate,
   deleteContact,
   deleteTemplate,
+  fillBroadcastPlaceholders,
   importContacts,
   isValidEmail,
   loadBroadcasts,
@@ -25,6 +28,7 @@ import {
   unsubscribeContact,
   updateTemplate,
   uploadAttachment,
+  usesBroadcastPlaceholders,
   type Broadcast,
   type BroadcastContent,
   type BroadcastTemplate,
@@ -57,6 +61,7 @@ function AdminBroadcast() {
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([])
   const [templates, setTemplates] = useState<BroadcastTemplate[]>([])
   const [signupHistory, setSignupHistory] = useState<SignupHistory>(new Map())
+  const [activeSeason, setActiveSeason] = useState<Season | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -84,16 +89,18 @@ function AdminBroadcast() {
   const [draftUploads, setDraftUploads] = useState<string[]>([])
 
   const refresh = useCallback(async () => {
-    const [contactData, broadcastData, historyData, templateData] = await Promise.all([
+    const [contactData, broadcastData, historyData, templateData, seasonData] = await Promise.all([
       loadContacts(),
       loadBroadcasts(),
       loadSignupHistory(),
       loadTemplates(),
+      loadActiveSeason(),
     ])
     setContacts(contactData)
     setBroadcasts(broadcastData)
     setSignupHistory(historyData)
     setTemplates(templateData)
+    setActiveSeason(seasonData)
   }, [])
 
   useEffect(() => {
@@ -136,11 +143,13 @@ function AdminBroadcast() {
     )
   }, [contacts, searchQuery, statusFilter])
 
-  const html = useMemo(() => buildBroadcastHtml(content), [content])
+  const filled = useMemo(() => fillBroadcastPlaceholders(subject, content, activeSeason), [subject, content, activeSeason])
+  const html = useMemo(() => buildBroadcastHtml(filled.content), [filled.content])
   const missingFields = [
     !subject.trim() && 'Betreff',
     !content.title.trim() && 'Titel',
     !content.body.trim() && 'Text',
+    !activeSeason && usesBroadcastPlaceholders(subject, content) && 'Aktive Saison für die Platzhalter',
   ].filter(Boolean)
   const canSend = missingFields.length === 0
   const activeTemplate = templates.find((template) => template.id === activeTemplateId)
@@ -265,13 +274,13 @@ function AdminBroadcast() {
       setError('Bitte eine gültige Testadresse eingeben.')
       return
     }
-    await run(() => sendTestMail(address, subject.trim(), html).then((result) => result.message))
+    await run(() => sendTestMail(address, filled.subject.trim(), html).then((result) => result.message))
   }
 
   async function handleSend() {
     setConfirmSend(false)
     const sent = await run(async () => {
-      const message = await sendBroadcast(subject.trim(), content, html)
+      const message = await sendBroadcast(filled.subject.trim(), filled.content, html)
       await refresh()
       return message
     })
@@ -403,6 +412,10 @@ function AdminBroadcast() {
                     onChange={(e) => setContent((prev) => ({ ...prev, body: e.target.value }))}
                   />
                   <p className="helfer-hint">Eine Leerzeile beginnt einen neuen Absatz.</p>
+                  <p className="helfer-hint">
+                    Platzhalter für Betreff, Titel, Text und Button-Text: {BROADCAST_PLACEHOLDERS.join(', ')}.{' '}
+                    {activeSeason ? `Die Werte kommen aus der aktiven Saison ${activeSeason.year}.` : 'Aktuell ist keine Saison aktiv.'}
+                  </p>
                   <label className="admin-label" htmlFor="broadcast-button-label">Button-Text</label>
                   <input
                     id="broadcast-button-label"
@@ -448,6 +461,7 @@ function AdminBroadcast() {
 
                 <div className="broadcast-preview">
                   <p className="admin-label">Vorschau</p>
+                  {filled.subject.trim() && <p className="helfer-hint">Betreff: {filled.subject}</p>}
                   <iframe title="Vorschau der Mail" sandbox="" srcDoc={html} className="broadcast-preview-frame" />
                 </div>
               </div>

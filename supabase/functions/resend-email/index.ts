@@ -3,8 +3,8 @@
 //
 // Zwei Modi:
 //   { type: 'edit-link', edit_token, base_url? }
-//       Öffentlich (Anmeldeformular). Die Mail wird hier aus der Anmeldung gebaut und nur an
-//       die hinterlegte Adresse gesendet – Empfänger und Inhalt sind nicht frei wählbar.
+//       Öffentlich (Anmeldeformular). Die Mail wird hier aus der Anmeldung und dem gespeicherten Text
+//       gebaut und nur an die hinterlegte Adresse gesendet – Empfänger und Inhalt sind nicht frei wählbar.
 //   { type: 'helper-confirmation', helper_signup_id }
 //       Öffentlich (Helferformular). Bestätigung an die Adresse der Helferanmeldung,
 //       nur in den ersten Minuten nach der Anmeldung.
@@ -12,6 +12,7 @@
 //       Frei formulierte Mail (Rundmail, Test-Mail). Nur für angemeldete Admins.
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { escapeHtml, renderConfirmationEmail } from '../_shared/confirmationEmail.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -19,7 +20,6 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 const FROM = 'SCL Hallenmehrkampf <noreply@scl-athletics.ch>'
-const CONTACT_EMAIL = 'vinzenzwolf1@gmail.com'
 const DEFAULT_BASE_URL = 'https://hmk.scl-athletics.ch'
 
 // Nur diese Seiten dürfen in Bearbeitungslinks stehen
@@ -41,17 +41,6 @@ const json = (body: unknown, status = 200) =>
     status,
     headers: { 'Content-Type': 'application/json', ...corsHeaders },
   })
-
-const escapeHtml = (value: string) =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-
-const formatDate = (value: string | null) =>
-  value ? new Date(value).toLocaleDateString('de-CH', { timeZone: 'Europe/Zurich' }) : null
 
 const sendViaResend = async (body: Record<string, unknown>) => {
   const res = await fetch('https://api.resend.com/emails', {
@@ -98,37 +87,19 @@ const sendEditLink = async (editToken: unknown, requestedBaseUrl: unknown) => {
       ? requestedBaseUrl
       : DEFAULT_BASE_URL
 
-  let eventTitle = season?.event_number ? `${season.event_number}. SCL Hallenmehrkampf` : 'SCL Hallenmehrkampf'
-  if (season?.year) eventTitle = `${eventTitle} ${season.year}`
   const editPath = season?.year ? `/${season.year}/edit/${editToken}` : `/edit/${editToken}`
-  const editLink = escapeHtml(`${baseUrl}${editPath}`)
-  const signupDeadlineText = formatDate(season?.signup_deadline ?? null)
-  const paymentDeadlineText = formatDate(season?.payment_deadline ?? null)
+  // Ohne gespeicherten Text gilt der Standardtext, die Mail mit dem Link soll trotzdem rausgehen
+  const { data: template, error: templateError } = await admin
+    .from('confirmation_email')
+    .select('subject, body')
+    .maybeSingle()
+  if (templateError) console.error('Failed to load confirmation email', templateError)
 
-  const html = `
-    <h1>Anmeldung ${escapeHtml(eventTitle)}</h1>
-    <p>Vielen Dank für Ihre Anmeldung. Über den folgenden Link können Sie Ihre Anmeldung bearbeiten:</p>
-    <p>
-      <a href="${editLink}">${editLink}</a>
-    </p>
-    <p>
-      ${
-        signupDeadlineText
-          ? `Sie können Ihre Anmeldung bis zum Anmeldeschluss am ${signupDeadlineText} über den Link anpassen. Danach sind Änderungen nicht mehr möglich.`
-          : 'Sie können Ihre Anmeldung bis zum Anmeldeschluss über den Link anpassen. Danach sind Änderungen nicht mehr möglich.'
-      }
-      ${
-        paymentDeadlineText
-          ? `<p>Bitte denken Sie daran, die Teilnahmegebühr bis spätestens ${paymentDeadlineText} zu begleichen. Sie können die Rechnung ebenfalls über den obenstehenden Link einsehen.</p>`
-          : ''
-      }
-    </p>
-    <p>Bei Fragen oder Unklarheiten melden Sie sich bitte unter <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.</p>
-  `
+  const { subject, html } = renderConfirmationEmail(season, template, `${baseUrl}${editPath}`)
 
   return sendViaResend({
     to: registration.email,
-    subject: `Ihre Anmeldung ${eventTitle} - Bearbeitungslink`,
+    subject,
     html,
   })
 }
