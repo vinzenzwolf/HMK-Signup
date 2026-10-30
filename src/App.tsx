@@ -8,6 +8,7 @@ import AdminSetPassword from './pages/AdminSetPassword'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminHelfer from './pages/AdminHelfer'
 import AdminSystem from './pages/AdminSystem'
+import AdminBroadcast from './pages/AdminBroadcast'
 import Impressum from './pages/Impressum'
 import ProtectedRoute from './components/ProtectedRoute'
 import NotFound from './pages/NotFound'
@@ -32,6 +33,7 @@ function App() {
             >
               <Route index element={<RequireRole role="registrations"><AdminDashboard /></RequireRole>} />
               <Route path="helfer" element={<RequireRole role="helpers"><AdminHelfer /></RequireRole>} />
+              <Route path="broadcast" element={<RequireRole role="broadcast"><AdminBroadcast /></RequireRole>} />
               <Route path="system" element={<RequireRole role="system"><AdminSystem /></RequireRole>} />
             </Route>
             <Route path="/helfer" element={<HelperSignupPage />} />

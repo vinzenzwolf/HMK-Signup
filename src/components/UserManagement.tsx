@@ -14,7 +14,7 @@ type ManagedUser = {
   roles: AdminRole[]
 }
 
-const ASSIGNABLE_ROLES: AdminRole[] = ['registrations', 'helpers']
+const ASSIGNABLE_ROLES: AdminRole[] = ['registrations', 'helpers', 'broadcast']
 
 const formatDate = (value: string | null) =>
   value ? new Date(value).toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'nie'

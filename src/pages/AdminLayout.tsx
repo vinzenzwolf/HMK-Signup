@@ -8,6 +8,7 @@ import './AdminLayout.css'
 const ADMIN_PAGES: Array<{ path: string; label: string; title: string; subtitle: string; role: AdminRole }> = [
   { path: '/admin', label: 'Anmeldungen', title: 'Anmeldungen Dashboard', subtitle: 'Übersicht aller Anmeldungen und Statistiken', role: 'registrations' },
   { path: '/admin/helfer', label: 'Helfer', title: 'Helferanmeldung', subtitle: 'Helferformular und Anmeldungen pro Wettkampf', role: 'helpers' },
+  { path: '/admin/broadcast', label: 'Broadcast', title: 'Broadcast', subtitle: 'Einladungen versenden und Empfänger verwalten', role: 'broadcast' },
   { path: '/admin/system', label: 'Systemadmin', title: 'Systemadmin', subtitle: 'Status der Dienste, Logins und Berechtigungen', role: 'system' },
 ]
 

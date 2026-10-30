@@ -21,7 +21,7 @@ const ALLOWED_BASE_URLS = [
   /^http:\/\/localhost:\d+$/,
 ]
 // Die Systemadmin-Rolle wird nicht über die Oberfläche vergeben
-const ASSIGNABLE_ROLES = ['registrations', 'helpers']
+const ASSIGNABLE_ROLES = ['registrations', 'helpers', 'broadcast']
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

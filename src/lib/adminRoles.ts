@@ -1,11 +1,12 @@
 import { createContext, useContext } from 'react'
 
-export type AdminRole = 'system' | 'registrations' | 'helpers'
+export type AdminRole = 'system' | 'registrations' | 'helpers' | 'broadcast'
 
 export const ROLE_LABELS: Record<AdminRole, string> = {
   system: 'Systemadmin',
   registrations: 'Anmeldungsadmin',
   helpers: 'Helferadmin',
+  broadcast: 'Broadcast-Admin',
 }
 
 export type AdminRolesContextValue = {

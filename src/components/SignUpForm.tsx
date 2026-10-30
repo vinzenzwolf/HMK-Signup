@@ -199,6 +199,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
   const [savedEditToken, setSavedEditToken] = useState<string | null>(editToken || null)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailError, setEmailError] = useState(false);
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
 
   // error banner states
   const [bannerMessage, setBannerMessage] = useState<string | null>(null);
@@ -470,6 +471,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
           phone: phoneNumber.trim(),
           athletes,
           season_id: seasonId,
+          newsletter_opt_in: newsletterOptIn,
         });
         if (updateResult.edit_token) {
           setSavedEditToken(updateResult.edit_token)
@@ -505,6 +507,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
           phone: phoneNumber.trim(),
           athletes,
           season_id: seasonId,
+          newsletter_opt_in: newsletterOptIn,
         });
 
         if (result.edit_token) {
@@ -545,6 +548,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
           phone: phoneNumber.trim(),
           athletes,
           season_id: seasonId,
+          newsletter_opt_in: newsletterOptIn,
         });
         savedRegistrationIdRef.current = result.id;
         setSavedRegistrationId(result.id)
@@ -786,6 +790,17 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
           </section>
 
           <section>
+            {!isEditMode && (
+              <label className="newsletter-opt-in">
+                <input
+                  type="checkbox"
+                  checked={newsletterOptIn}
+                  disabled={isRegistrationLocked}
+                  onChange={(e) => setNewsletterOptIn(e.target.checked)}
+                />
+                Ich möchte künftig Informationen zum SCL Hallenmehrkampf (z. B. die Einladung fürs nächste Jahr) an diese E-Mail-Adresse erhalten. Abmeldung jederzeit möglich.
+              </label>
+            )}
             <div className='add-child-box'>
               <SubmitButton
               label={isSubmitting ? "Wird gespeichert..." : "Anmeldung speichern"}
