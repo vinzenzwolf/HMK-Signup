@@ -75,10 +75,10 @@ function AdminLogin() {
               disabled={isLoading}
               style={{
                 padding: '0.9rem 1.5rem',
-                backgroundColor: '#4C1D95',
-                color: 'white',
+                backgroundColor: 'var(--brand-dark)',
+                color: 'var(--brand-yellow)',
                 border: 'none',
-                borderRadius: '16px',
+                borderRadius: '999px',
                 fontSize: '1rem',
                 fontWeight: 600,
                 cursor: isLoading ? 'not-allowed' : 'pointer',

@@ -1,16 +1,16 @@
 .helper-form h2 {
   margin: 0 0 1rem 0;
   font-size: 1.25rem;
-  color: #0f172a;
+  color: var(--brand-dark);
 }
 
 .helper-note {
   margin: 0 0 1.75rem 0;
   padding: 1rem 1.25rem;
   border-radius: 12px;
-  background: #f5f3ff;
-  border: 1px solid #ddd6fe;
-  color: #4c1d95;
+  background: var(--brand-gray);
+  border: 1px solid var(--brand-border);
+  color: var(--brand-dark);
   line-height: 1.5;
 }
 
@@ -35,16 +35,16 @@
   background: #f8fafc;
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
-  color: #0f172a;
+  color: var(--brand-dark);
 }
 
 .helper-option:hover {
-  border-color: #c4b5fd;
+  border-color: var(--brand-border);
 }
 
 .helper-option-selected {
-  border-color: #4c1d95;
-  background: #f5f3ff;
+  border-color: var(--brand-dark);
+  background: var(--brand-gray);
 }
 
 .helper-option input {
@@ -53,7 +53,7 @@
   height: 1.25rem;
   margin: 0.125rem 0 0 0;
   padding: 0;
-  accent-color: #4c1d95;
+  accent-color: var(--brand-dark);
   cursor: pointer;
 }
 

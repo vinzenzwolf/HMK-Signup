@@ -780,7 +780,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
             <div className='add-child-box'>
               <DashedButton
               label="+ füge eine weitere Athlet/in hinzu"
-              color="#4C1D95"
+              color="var(--brand-dark)"
               onClick={addChild}
               disabled={isEditingLocked || isRegistrationLocked}
               />
@@ -804,7 +804,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
             <div className='add-child-box'>
               <SubmitButton
               label={isSubmitting ? "Wird gespeichert..." : "Anmeldung speichern"}
-              color="#4C1D95"
+              color="var(--brand-dark)"
               onClick={handleSubmit}
               disabled={isSubmitting || isEditingLocked || isRegistrationLocked}
               />

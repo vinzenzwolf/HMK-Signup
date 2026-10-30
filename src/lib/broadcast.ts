@@ -145,8 +145,14 @@ export async function removeAttachment(path: string): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
+// Resend erzeugt den Abmeldelink nur in Broadcasts, in Einzelmails bleibt er deshalb ein Hinweis
 export const sendTestMail = (to: string, subject: string, html: string) =>
-  callBroadcast<{ message: string }>({ action: 'test', to, subject, html })
+  callBroadcast<{ message: string }>({
+    action: 'test',
+    to,
+    subject,
+    html: html.replace(/<a href="\{\{\{RESEND_UNSUBSCRIBE_URL\}\}\}"[^>]*>Abmelden<\/a>/, 'Abmelden (nur im echten Versand aktiv)'),
+  })
 
 export async function sendBroadcast(subject: string, content: BroadcastContent, html: string): Promise<string> {
   // Vor dem Versand muss Resend alle Änderungen kennen
@@ -233,7 +239,7 @@ const escapeHtml = (value: string) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
 
-const LINK_COLOR = '#4C1D95'
+const LINK_COLOR = '#303340'
 
 export function buildBroadcastHtml({ title, body, buttonLabel, buttonUrl, attachments }: BroadcastContent) {
   const paragraphs = body
@@ -247,7 +253,7 @@ export function buildBroadcastHtml({ title, body, buttonLabel, buttonUrl, attach
     .join('')
   const button =
     buttonLabel.trim() && buttonUrl.trim()
-      ? `<p style="margin:24px 0;"><a href="${escapeHtml(buttonUrl.trim())}" style="display:inline-block;padding:12px 24px;border-radius:8px;background-color:${LINK_COLOR};color:#ffffff;text-decoration:none;font-weight:600;">${escapeHtml(buttonLabel.trim())}</a></p>`
+      ? `<p style="margin:24px 0;"><a href="${escapeHtml(buttonUrl.trim())}" style="display:inline-block;padding:12px 28px;border-radius:999px;background-color:${LINK_COLOR};color:#ffe400;text-decoration:none;font-weight:600;">${escapeHtml(buttonLabel.trim())}</a></p>`
       : ''
   const files =
     attachments.length > 0

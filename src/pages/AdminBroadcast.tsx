@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import InformationBanner from '../components/InformationBanner'
 import { UsageBar } from '../components/ServiceStatus'
+import { useAdminRoles } from '../lib/adminRoles'
 import {
   SOURCE_LABELS,
   STATUS_LABELS,
@@ -44,6 +45,7 @@ const formatDate = (value: string) =>
   new Date(value).toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
 function AdminBroadcast() {
+  const { email: adminEmail } = useAdminRoles()
   const [contacts, setContacts] = useState<NewsletterContact[]>([])
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -61,7 +63,7 @@ function AdminBroadcast() {
 
   const [subject, setSubject] = useState('')
   const [content, setContent] = useState<BroadcastContent>(EMPTY_CONTENT)
-  const [testAddress, setTestAddress] = useState('')
+  const [testAddress, setTestAddress] = useState(adminEmail ?? '')
   const [confirmSend, setConfirmSend] = useState(false)
   const [isBusy, setIsBusy] = useState(false)
 
@@ -76,6 +78,11 @@ function AdminBroadcast() {
       .catch((err) => setError(err instanceof Error ? err.message : 'Daten konnten nicht geladen werden.'))
       .finally(() => setIsLoading(false))
   }, [refresh])
+
+  // Meldungen stehen oben auf der Seite, die Buttons weit unten
+  useEffect(() => {
+    if (error || successMessage) window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [error, successMessage])
 
   const run = async (action: () => Promise<string | void>) => {
     setIsBusy(true)
@@ -106,7 +113,12 @@ function AdminBroadcast() {
   }, [contacts, searchQuery, statusFilter])
 
   const html = useMemo(() => buildBroadcastHtml(content), [content])
-  const canSend = subject.trim() !== '' && content.title.trim() !== '' && content.body.trim() !== ''
+  const missingFields = [
+    !subject.trim() && 'Betreff',
+    !content.title.trim() && 'Titel',
+    !content.body.trim() && 'Text',
+  ].filter(Boolean)
+  const canSend = missingFields.length === 0
 
   async function handleAddContact() {
     const email = normalizeEmail(newContact.email)
@@ -316,6 +328,7 @@ function AdminBroadcast() {
                   </button>
                 )}
               </div>
+              {!canSend && <p className="helfer-hint">Zum Senden fehlt noch: {missingFields.join(', ')}.</p>}
             </div>
 
             {/* Empfänger */}

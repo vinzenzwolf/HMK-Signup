@@ -1,9 +1,9 @@
 .child-card {
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  border: 1px solid var(--brand-border);
   border-radius: 20px;
   padding: 1.25rem;
   margin-bottom: 1rem;
-  background: linear-gradient(120deg, rgba(99, 102, 241, 0.05), #fff);
+  background: #f8f8fa;
 }
 
 .child-card-header {
@@ -28,6 +28,6 @@
   padding: 0.25rem 0.5rem;
 }
 .remove-button:disabled {
-  color: #cbd5f5;
+  color: var(--brand-border);
   cursor: not-allowed;
 }

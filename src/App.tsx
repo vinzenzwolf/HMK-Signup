@@ -13,11 +13,13 @@ import Impressum from './pages/Impressum'
 import ProtectedRoute from './components/ProtectedRoute'
 import NotFound from './pages/NotFound'
 import Footer from './components/Footer'
+import SiteHeader from './components/SiteHeader'
 
 function App() {
   return (
     <BrowserRouter>
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <SiteHeader />
         <div style={{ flex: 1 }}>
           <Routes>
             <Route path="/impressum" element={<Impressum />} />

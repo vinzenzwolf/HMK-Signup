@@ -2,7 +2,7 @@
   border: 1px dashed color-mix(in srgb, var(--btn-color) 50%, transparent);
   color: var(--btn-color);
   background: color-mix(in srgb, var(--btn-color) 8%, transparent);
-  border-radius: 16px;
+  border-radius: 999px;
   padding: 0.85rem;
   font-weight: 600;
   cursor: pointer;

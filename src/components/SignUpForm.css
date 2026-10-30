@@ -40,7 +40,7 @@ section:first-of-type {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   line-height: 1.5;
-  color: #0f172a;
+  color: var(--brand-dark);
 }
 
 .payment-box p {
@@ -96,21 +96,21 @@ section:first-of-type {
 }
 
 .invoice-button {
-  background: #0f172a;
-  color: #fff;
+  background: var(--brand-dark);
+  color: var(--brand-yellow);
   border: 0;
-  border-radius: 12px;
+  border-radius: 999px;
   padding: 0.8rem 1.2rem;
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
-  box-shadow: 0 12px 24px color-mix(in srgb, #0f172a 25%, transparent);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--brand-dark) 25%, transparent);
 }
 
 .invoice-button:hover {
   transform: translateY(-2px);
   filter: brightness(1.05);
-  box-shadow: 0 16px 32px color-mix(in srgb, #0f172a 35%, transparent);
+  box-shadow: 0 16px 32px color-mix(in srgb, var(--brand-dark) 35%, transparent);
 }
 
 .invoice-button:active {

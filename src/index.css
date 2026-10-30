@@ -1,3 +1,12 @@
+:root {
+  /* Farben von scl-athletics.ch */
+  --brand-yellow: #ffe400;
+  --brand-dark: #303340;
+  --brand-dark-hover: #454959;
+  --brand-gray: #edeef2;
+  --brand-border: #dcdee5;
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -13,14 +22,32 @@ html, body {
 }
 
 body {
-  background: radial-gradient(circle at 10% 20%, #fef3c7 0%, #fdf4ff 35%, #f8fafc 100%);
-  background-attachment: fixed; 
-  background-size: cover; 
-  background-repeat: no-repeat;
-
-  font-family: 'Inter', 'SF Pro Display', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--brand-gray);
+  font-family: 'Archivo Variable', 'Archivo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #0f172a;
+  color: var(--brand-dark);
 }
 
+h1,
+h2,
+h3 {
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-weight: 800;
+}
+
+a {
+  color: var(--brand-dark);
+}
+
+button {
+  font-family: inherit;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--brand-dark);
+}

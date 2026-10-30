@@ -9,7 +9,7 @@ type SubmitButtonProps = {
 
 function SubmitButton({
   label,
-  color = '#2563eb',
+  color = 'var(--brand-dark)',
   onClick,
   disabled = false,
 }: SubmitButtonProps) {

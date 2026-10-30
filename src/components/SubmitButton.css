@@ -1,10 +1,10 @@
 .submit-button {
   /* base color */
   background: var(--btn-color);
-  color: #fff;
+  color: var(--brand-yellow);
 
   border: 0;
-  border-radius: 16px;
+  border-radius: 999px;
   padding: 0.9rem 1.5rem;
   font-size: 1rem;
   font-weight: 600;

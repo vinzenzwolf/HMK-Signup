@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
     "@react-pdf/renderer": "^4.3.1",
     "@supabase/supabase-js": "^2.87.3",
     "buffer": "^6.0.3",

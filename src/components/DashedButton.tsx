@@ -10,7 +10,7 @@ type DashedButtonProps = {
 
 function DashedButton({
   label,
-  color = '#2563eb',
+  color = 'var(--brand-dark)',
   type = 'button',
   onClick,
   disabled = false,

@@ -37,10 +37,10 @@
 
 .admin-undo-button {
   padding: 0.5rem 1rem;
-  background-color: #4C1D95;
-  color: white;
+  background-color: var(--brand-dark);
+  color: var(--brand-yellow);
   border: none;
-  border-radius: 8px;
+  border-radius: 999px;
   cursor: pointer;
   font-weight: 600;
   font-size: 0.875rem;
@@ -48,13 +48,13 @@
 }
 
 .admin-undo-button:hover {
-  background-color: #5b21b6;
+  background-color: var(--brand-dark-hover);
   transform: translateY(-1px);
 }
 
 .admin-section-title {
   margin: 0 0 2rem 0;
-  color: #0f172a;
+  color: var(--brand-dark);
   font-size: 1.5rem;
   font-weight: 700;
 }
@@ -75,34 +75,15 @@
   border-radius: 16px;
 }
 
-.admin-stat-card-rose {
-  background: linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%);
-  border: 1px solid #fda4af;
-}
-
-.admin-stat-card-sky {
-  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-  border: 1px solid #7dd3fc;
-}
-
-.admin-stat-card-amber {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border: 1px solid #fcd34d;
-}
-
-.admin-stat-card-emerald {
-  background: linear-gradient(135deg, #ecfdf3 0%, #d1fae5 100%);
-  border: 1px solid #a7f3d0;
-}
-
-.admin-stat-card-violet {
-  background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
-  border: 1px solid #c4b5fd;
-}
-
+.admin-stat-card-rose,
+.admin-stat-card-sky,
+.admin-stat-card-amber,
+.admin-stat-card-emerald,
+.admin-stat-card-violet,
 .admin-stat-card-slate {
-  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
-  border: 1px solid #94a3b8;
+  background: #f8f8fa;
+  border: 1px solid var(--brand-border);
+  border-top: 4px solid var(--brand-yellow);
 }
 
 .admin-stat-value {
@@ -111,24 +92,28 @@
   margin-bottom: 0.5rem;
 }
 
-.admin-stat-value-rose { color: #be123c; }
-.admin-stat-value-sky { color: #0369a1; }
-.admin-stat-value-amber { color: #b45309; }
-.admin-stat-value-emerald { color: #047857; }
-.admin-stat-value-violet { color: #5b21b6; }
-.admin-stat-value-slate { color: #1e293b; }
+.admin-stat-value-rose,
+.admin-stat-value-sky,
+.admin-stat-value-amber,
+.admin-stat-value-emerald,
+.admin-stat-value-violet,
+.admin-stat-value-slate {
+  color: var(--brand-dark);
+}
 
 .admin-stat-label {
   font-weight: 600;
   font-size: 0.875rem;
 }
 
-.admin-stat-label-rose { color: #9f1239; }
-.admin-stat-label-sky { color: #075985; }
-.admin-stat-label-amber { color: #92400e; }
-.admin-stat-label-emerald { color: #065f46; }
-.admin-stat-label-violet { color: #4338ca; }
-.admin-stat-label-slate { color: #334155; }
+.admin-stat-label-rose,
+.admin-stat-label-sky,
+.admin-stat-label-amber,
+.admin-stat-label-emerald,
+.admin-stat-label-violet,
+.admin-stat-label-slate {
+  color: var(--brand-dark);
+}
 
 .admin-clubs-list {
   margin-top: 2rem;
@@ -138,7 +123,7 @@
 
 .admin-clubs-title {
   margin: 0 0 1.25rem 0;
-  color: #0f172a;
+  color: var(--brand-dark);
   font-size: 1.25rem;
   font-weight: 600;
 }
@@ -167,15 +152,15 @@
 
 .admin-club-name {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--brand-dark);
   font-size: 0.9375rem;
 }
 
 .admin-club-count {
-  background-color: #4C1D95;
-  color: white;
+  background-color: var(--brand-dark);
+  color: var(--brand-yellow);
   padding: 0.375rem 0.75rem;
-  border-radius: 8px;
+  border-radius: 999px;
   font-size: 0.8125rem;
   font-weight: 700;
   min-width: 2rem;
@@ -243,7 +228,7 @@
 
 .admin-search-clear:hover {
   background-color: #f1f5f9;
-  color: #0f172a;
+  color: var(--brand-dark);
 }
 
 .admin-empty-state {
@@ -273,7 +258,7 @@
 }
 
 .admin-clubs-title {
-  color: #0f172a;
+  color: var(--brand-dark);
   font-weight: 600;
   margin-bottom: 1rem;
   font-size: 1rem;
@@ -295,7 +280,7 @@
 }
 
 .admin-clubs-count {
-  color: #0f172a;
+  color: var(--brand-dark);
   font-weight: 600;
 }
 
@@ -316,17 +301,17 @@
 
 .admin-header-title {
   margin: 0;
-  color: #0f172a;
+  color: var(--brand-dark);
   font-size: 1.5rem;
   font-weight: 700;
 }
 
 .admin-refresh-button {
   padding: 0.75rem 1.5rem;
-  background-color: #4C1D95;
-  color: white;
+  background-color: var(--brand-dark);
+  color: var(--brand-yellow);
   border: none;
-  border-radius: 12px;
+  border-radius: 999px;
   cursor: pointer;
   font-weight: 600;
   font-size: 0.9375rem;
@@ -334,7 +319,7 @@
 }
 
 .admin-refresh-button:hover {
-  background-color: #5b21b6;
+  background-color: var(--brand-dark-hover);
   transform: translateY(-1px);
 }
 
@@ -346,15 +331,15 @@
   font-size: 1rem;
   font-family: inherit;
   background-color: #f8fafc;
-  color: #0f172a;
+  color: var(--brand-dark);
   transition: all 0.2s;
 }
 
 .admin-search-input:focus {
   outline: none;
-  border-color: #4C1D95;
+  border-color: var(--brand-dark);
   background-color: #ffffff;
-  box-shadow: 0 0 0 3px rgba(76, 29, 149, 0.1);
+  box-shadow: 0 0 0 3px rgba(255, 228, 0, 0.45);
 }
 
 .admin-registration-card {
@@ -368,17 +353,17 @@
 }
 
 .admin-registration-card:hover {
-  border-color: rgba(76, 29, 149, 0.2);
+  border-color: var(--brand-dark);
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
   transform: translateY(-2px);
 }
 
 .admin-refresh-button {
   padding: 0.75rem 1.5rem;
-  background-color: #4C1D95;
-  color: white;
+  background-color: var(--brand-dark);
+  color: var(--brand-yellow);
   border: none;
-  border-radius: 12px;
+  border-radius: 999px;
   cursor: pointer;
   font-weight: 600;
   font-size: 0.9375rem;
@@ -387,7 +372,7 @@
 }
 
 .admin-refresh-button:hover {
-  background-color: #5b21b6;
+  background-color: var(--brand-dark-hover);
   transform: translateY(-1px);
 }
 
@@ -436,13 +421,13 @@
 }
 
 .admin-edit-button-active {
-  background-color: #e2e8f0;
-  color: #0f172a;
+  background-color: var(--brand-gray);
+  color: var(--brand-dark);
 }
 
 .admin-edit-button-inactive {
-  background-color: #0ea5e9;
-  color: white;
+  background-color: var(--brand-dark);
+  color: var(--brand-yellow);
 }
 
 .admin-edit-button:hover {
@@ -482,7 +467,7 @@
 }
 
 .admin-athletes-title {
-  color: #0f172a;
+  color: var(--brand-dark);
   display: block;
 }
 
@@ -509,7 +494,7 @@
 }
 
 .admin-athlete-card:hover {
-  border-color: rgba(76, 29, 149, 0.2);
+  border-color: var(--brand-dark);
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
 }
 
@@ -536,19 +521,19 @@
 }
 
 .admin-edit-link-title {
-  color: #0f172a;
+  color: var(--brand-dark);
   display: block;
   margin-bottom: 0.5rem;
 }
 
 .admin-edit-link {
-  color: #0284c7;
+  color: var(--brand-dark-hover);
   word-break: break-all;
   text-decoration: underline;
 }
 
 .admin-date-label {
-  color: #0f172a;
+  color: var(--brand-dark);
   display: block;
   margin-bottom: 0.25rem;
 }
@@ -573,7 +558,7 @@
   margin: 0 0 0.5rem 0;
   font-size: clamp(1.75rem, 4vw, 2.5rem);
   font-weight: 700;
-  color: #0f172a;
+  color: var(--brand-dark);
   line-height: 1.2;
 }
 
@@ -616,7 +601,7 @@
   background-color: #ffffff;
   font-size: 0.875rem;
   width: 100%;
-  color: #0f172a;
+  color: var(--brand-dark);
   font-family: inherit;
   transition: border-color 0.2s;
 }
@@ -644,22 +629,22 @@
 }
 
 .admin-button-primary {
-  background-color: #0ea5e9;
-  color: white;
+  background-color: var(--brand-dark);
+  color: var(--brand-yellow);
 }
 
 .admin-button-primary:hover {
-  background-color: #0284c7;
+  background-color: var(--brand-dark-hover);
   transform: translateY(-1px);
 }
 
 .admin-button-secondary {
   background-color: #e2e8f0;
-  color: #0f172a;
+  color: var(--brand-dark);
 }
 
 .admin-button-secondary:hover {
-  background-color: #cbd5e1;
+  background-color: var(--brand-border);
   transform: translateY(-1px);
 }
 
@@ -678,14 +663,14 @@
 }
 
 .admin-label {
-  color: #0f172a;
+  color: var(--brand-dark);
   display: block;
   margin-bottom: 0.25rem;
   font-weight: 600;
 }
 
 .admin-label-small {
-  color: #0f172a;
+  color: var(--brand-dark);
   display: block;
   margin-bottom: 0.25rem;
   font-size: 0.875rem;

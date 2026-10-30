@@ -845,7 +845,7 @@ function AdminDashboard() {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
     const withBreaks = escaped.replace(/\n/g, '<br />')
-    return `<div style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #0f172a;">${withBreaks}</div>`
+    return `<div style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.5; color: var(--brand-dark);">${withBreaks}</div>`
   }
 
   function readFileAsBase64(file: File): Promise<string> {
@@ -1025,8 +1025,8 @@ function AdminDashboard() {
                         textAlign: 'left',
                         padding: '0.9rem 1rem',
                         borderRadius: 12,
-                        border: isSelected ? '2px solid #4C1D95' : '1px solid #e2e8f0',
-                        background: isSelected ? '#f5f3ff' : '#ffffff',
+                        border: isSelected ? '2px solid var(--brand-dark)' : '1px solid #e2e8f0',
+                        background: isSelected ? 'var(--brand-gray)' : '#ffffff',
                         cursor: 'pointer',
                         display: 'flex',
                         flexDirection: 'column',
@@ -1034,7 +1034,7 @@ function AdminDashboard() {
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-                        <strong style={{ color: '#0f172a', fontSize: '1rem' }}>{season.year}</strong>
+                        <strong style={{ color: 'var(--brand-dark)', fontSize: '1rem' }}>{season.year}</strong>
                         <span
                           style={{
                             fontSize: '0.8rem',
@@ -1095,7 +1095,7 @@ function AdminDashboard() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.5rem',
-                    color: '#0f172a',
+                    color: 'var(--brand-dark)',
                     fontWeight: 600,
                   }}
                 >
@@ -1143,7 +1143,7 @@ function AdminDashboard() {
                       borderRadius: 10,
                       cursor: 'pointer',
                       fontWeight: 600,
-                      color: '#0f172a',
+                      color: 'var(--brand-dark)',
                     }}
                   >
                     Schließen
@@ -1218,9 +1218,9 @@ function AdminDashboard() {
                       style={{
                         padding: '0.75rem 1.1rem',
                         backgroundColor: '#e2e8f0',
-                        color: '#0f172a',
+                        color: 'var(--brand-dark)',
                         border: 'none',
-                        borderRadius: '12px',
+                        borderRadius: '999px',
                         cursor: 'pointer',
                         fontWeight: 600,
                       }}
@@ -1231,10 +1231,10 @@ function AdminDashboard() {
                       type="submit"
                       style={{
                         padding: '0.75rem 1.25rem',
-                        backgroundColor: '#4C1D95',
-                        color: 'white',
+                        backgroundColor: 'var(--brand-dark)',
+                        color: 'var(--brand-yellow)',
                         border: 'none',
-                        borderRadius: '12px',
+                        borderRadius: '999px',
                         cursor: 'pointer',
                         fontWeight: 600,
                       }}
@@ -1288,7 +1288,7 @@ function AdminDashboard() {
                       borderRadius: 10,
                       cursor: 'pointer',
                       fontWeight: 600,
-                      color: '#0f172a',
+                      color: 'var(--brand-dark)',
                     }}
                   >
                     Schließen
@@ -1342,10 +1342,10 @@ function AdminDashboard() {
                         handlePdfSelection(e.dataTransfer.files?.[0] || null)
                       }}
                       style={{
-                        border: `2px dashed ${isDraggingPdf ? '#4C1D95' : '#cbd5e1'}`,
+                        border: `2px dashed ${isDraggingPdf ? 'var(--brand-dark)' : '#cbd5e1'}`,
                         borderRadius: 12,
                         padding: '1.25rem',
-                        background: isDraggingPdf ? '#f5f3ff' : '#f8fafc',
+                        background: isDraggingPdf ? 'var(--brand-gray)' : '#f8fafc',
                         textAlign: 'center',
                         color: '#475569',
                       }}
@@ -1359,7 +1359,7 @@ function AdminDashboard() {
                       />
                       <label htmlFor="admin-email-pdf" style={{ cursor: 'pointer' }}>
                         {pdfAttachment ? (
-                          <strong style={{ color: '#0f172a' }}>{pdfAttachment.name}</strong>
+                          <strong style={{ color: 'var(--brand-dark)' }}>{pdfAttachment.name}</strong>
                         ) : (
                           <span>PDF hierher ziehen oder klicken zum Auswählen</span>
                         )}
@@ -1392,9 +1392,9 @@ function AdminDashboard() {
                       style={{
                         padding: '0.75rem 1.1rem',
                         backgroundColor: '#e2e8f0',
-                        color: '#0f172a',
+                        color: 'var(--brand-dark)',
                         border: 'none',
-                        borderRadius: '12px',
+                        borderRadius: '999px',
                         cursor: 'pointer',
                         fontWeight: 600,
                       }}
@@ -1407,10 +1407,10 @@ function AdminDashboard() {
                       disabled={isSendingEmail}
                       style={{
                         padding: '0.75rem 1.25rem',
-                        backgroundColor: isSendingEmail ? '#7c3aed' : '#4C1D95',
-                        color: 'white',
+                        backgroundColor: isSendingEmail ? 'var(--brand-dark-hover)' : 'var(--brand-dark)',
+                        color: 'var(--brand-yellow)',
                         border: 'none',
-                        borderRadius: '12px',
+                        borderRadius: '999px',
                         cursor: isSendingEmail ? 'not-allowed' : 'pointer',
                         fontWeight: 600,
                       }}
@@ -1514,10 +1514,10 @@ function AdminDashboard() {
                     type="submit"
                     style={{
                       padding: '0.75rem 1.25rem',
-                      backgroundColor: '#4C1D95',
-                      color: 'white',
+                      backgroundColor: 'var(--brand-dark)',
+                      color: 'var(--brand-yellow)',
                       border: 'none',
-                      borderRadius: '12px',
+                      borderRadius: '999px',
                       cursor: 'pointer',
                       fontWeight: 600,
                       width: '100%',
@@ -1636,7 +1636,7 @@ function AdminDashboard() {
               }}
               onClick={() => setIsRegistrationsExpanded(!isRegistrationsExpanded)}
             >
-              <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.5rem', fontWeight: 700 }}>
+              <h2 style={{ margin: 0, color: 'var(--brand-dark)', fontSize: '1.5rem', fontWeight: 700 }}>
                 Anmeldungen {searchQuery ? `(${filteredRegistrations.length} von ${registrations.length})` : `(${registrations.length})`}
               </h2>
               <span style={{ 
@@ -1655,21 +1655,21 @@ function AdminDashboard() {
                   onClick={() => loadRegistrations().then(() => calculateStatistics())}
                   style={{
                     padding: '0.75rem 1.5rem',
-                    backgroundColor: '#4C1D95',
-                    color: 'white',
+                    backgroundColor: 'var(--brand-dark)',
+                    color: 'var(--brand-yellow)',
                     border: 'none',
-                    borderRadius: '12px',
+                    borderRadius: '999px',
                     cursor: 'pointer',
                     fontWeight: 600,
                     fontSize: '0.9375rem',
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#5b21b6'
+                    e.currentTarget.style.backgroundColor = 'var(--brand-dark-hover)'
                     e.currentTarget.style.transform = 'translateY(-1px)'
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#4C1D95'
+                    e.currentTarget.style.backgroundColor = 'var(--brand-dark)'
                     e.currentTarget.style.transform = 'translateY(0)'
                   }}
                 >
@@ -1679,21 +1679,21 @@ function AdminDashboard() {
                   onClick={exportAthletesCsv}
                   style={{
                     padding: '0.75rem 1.5rem',
-                    backgroundColor: '#0ea5e9',
-                    color: 'white',
+                    backgroundColor: 'var(--brand-dark)',
+                    color: 'var(--brand-yellow)',
                     border: 'none',
-                    borderRadius: '12px',
+                    borderRadius: '999px',
                     cursor: 'pointer',
                     fontWeight: 600,
                     fontSize: '0.9375rem',
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#0284c7'
+                    e.currentTarget.style.backgroundColor = 'var(--brand-dark-hover)'
                     e.currentTarget.style.transform = 'translateY(-1px)'
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#0ea5e9'
+                    e.currentTarget.style.backgroundColor = 'var(--brand-dark)'
                     e.currentTarget.style.transform = 'translateY(0)'
                   }}
                 >
@@ -1741,18 +1741,18 @@ function AdminDashboard() {
                 style={{
                   width: '100%',
                   padding: '1rem 1rem 1rem 3rem',
-                  borderRadius: '14px',
+                  borderRadius: '999px',
                   border: '2px solid #e2e8f0',
                   fontSize: '1rem',
                   fontFamily: 'inherit',
                   backgroundColor: '#f8fafc',
-                  color: '#0f172a',
+                  color: 'var(--brand-dark)',
                   transition: 'all 0.2s',
                 }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = '#4C1D95'
+                  e.target.style.borderColor = 'var(--brand-dark)'
                   e.target.style.backgroundColor = '#ffffff'
-                  e.target.style.boxShadow = '0 0 0 3px rgba(76, 29, 149, 0.1)'
+                  e.target.style.boxShadow = '0 0 0 3px rgba(255, 228, 0, 0.45)'
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = '#e2e8f0'
@@ -1791,7 +1791,7 @@ function AdminDashboard() {
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = '#f1f5f9'
-                    e.currentTarget.style.color = '#0f172a'
+                    e.currentTarget.style.color = 'var(--brand-dark)'
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = 'transparent'

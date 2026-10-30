@@ -29,13 +29,13 @@
 
 .admin-nav-link:hover {
   background-color: #f1f5f9;
-  color: #0f172a;
+  color: var(--brand-dark);
 }
 
 .admin-nav-link-active,
 .admin-nav-link-active:hover {
-  background-color: #4C1D95;
-  color: #ffffff;
+  background-color: var(--brand-dark);
+  color: var(--brand-yellow);
 }
 
 .admin-nav-bar .admin-logout-button {

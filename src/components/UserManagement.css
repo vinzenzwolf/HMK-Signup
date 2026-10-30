@@ -9,8 +9,8 @@
   padding: 1.25rem 1.5rem;
   margin-bottom: 2rem;
   border-radius: 16px;
-  background-color: #f5f3ff;
-  border: 1px solid #ddd6fe;
+  background-color: var(--brand-gray);
+  border: 1px solid var(--brand-border);
 }
 
 .user-mgmt-invite .service-status-group-title {
@@ -40,7 +40,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #0f172a;
+  color: var(--brand-dark);
   font-weight: 500;
   cursor: pointer;
 }
@@ -49,7 +49,7 @@
   width: 1.125rem;
   height: 1.125rem;
   padding: 0;
-  accent-color: #4C1D95;
+  accent-color: var(--brand-dark);
 }
 
 .user-mgmt-list {
@@ -81,7 +81,7 @@
 }
 
 .user-mgmt-email {
-  color: #0f172a;
+  color: var(--brand-dark);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -96,8 +96,8 @@
   flex-shrink: 0;
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
-  background-color: #4C1D95;
-  color: #ffffff;
+  background-color: var(--brand-dark);
+  color: var(--brand-yellow);
   font-size: 0.75rem;
   font-weight: 600;
 }
