@@ -12,9 +12,10 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-const FROM = 'SCL Hallenmehrkampf <noreply@hallenmehrkampf.ch>'
-const DEFAULT_BASE_URL = 'https://hallenmehrkampf.ch'
+const FROM = 'SCL Hallenmehrkampf <noreply@scl-athletics.ch>'
+const DEFAULT_BASE_URL = 'https://hmk.scl-athletics.ch'
 const ALLOWED_BASE_URLS = [
+  /^https:\/\/hmk\.scl-athletics\.ch$/,
   /^https:\/\/hallenmehrkampf\.ch$/,
   /^https:\/\/hmk-signup(-[a-z0-9-]+)?\.vercel\.app$/,
   /^http:\/\/localhost:\d+$/,
