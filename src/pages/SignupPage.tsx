@@ -26,6 +26,8 @@ function SignupPage() {
 
   useEffect(() => {
     async function loadData() {
+      // Blendet das Formular aus, damit es nach dem Wechsel auf die Bearbeitungsseite neu aufgebaut wird
+      setIsLoading(true)
       try {
         // 1) Load season (by URL year or active)
         const yearNumber = year ? parseInt(year, 10) : undefined
