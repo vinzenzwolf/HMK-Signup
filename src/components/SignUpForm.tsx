@@ -199,7 +199,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
   const [savedEditToken, setSavedEditToken] = useState<string | null>(editToken || null)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailError, setEmailError] = useState(false);
-  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
+  const [newsletterOptIn, setNewsletterOptIn] = useState(true);
 
   // error banner states
   const [bannerMessage, setBannerMessage] = useState<string | null>(null);
