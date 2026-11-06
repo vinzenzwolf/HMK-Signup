@@ -65,7 +65,38 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
       : [createEmptyChild()]
   );
 
+  // Athleten-Suche: Die Treffer werden beim Tippen ins Suchfeld festgehalten (nicht laufend neu berechnet),
+  // damit eine Karte nicht verschwindet, während man ihren Namen bearbeitet. Neue Karten, Importe und
+  // fehlgeschlagene Validierungen setzen die Suche zurück, damit nichts Relevantes ausgeblendet bleibt.
+  const [athleteSearch, setAthleteSearch] = useState('')
+  const [matchingChildIds, setMatchingChildIds] = useState<Set<string> | null>(null)
+
+  const updateAthleteSearch = (value: string) => {
+    setAthleteSearch(value)
+    const terms = value.toLowerCase().split(/\s+/).filter(Boolean)
+    if (terms.length === 0) {
+      setMatchingChildIds(null)
+      return
+    }
+    setMatchingChildIds(new Set(
+      children
+        .filter(child => {
+          const haystack = `${child.vorname} ${child.nachname} ${child.jahrgang}`.toLowerCase()
+          return terms.every(term => haystack.includes(term))
+        })
+        .map(child => child.id)
+    ))
+  }
+
+  const clearAthleteSearch = () => {
+    setAthleteSearch('')
+    setMatchingChildIds(null)
+  }
+
+  const isChildVisible = (child: Child) => matchingChildIds === null || matchingChildIds.has(child.id)
+
    const addChild = () => {
+    clearAthleteSearch();
     setChildren(prev => [...prev, createEmptyChild()]);
   };
 
@@ -291,14 +322,6 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
     [isEditingLocked, withdrawalDeadline]
   )
 
-  // Die Suche gibt es nur im gesperrten Zustand: Beim Speichern dürfen keine Validierungsfehler in ausgeblendeten Karten stecken
-  const [athleteSearch, setAthleteSearch] = useState('')
-  const athleteSearchTerms = athleteSearch.toLowerCase().split(/\s+/).filter(Boolean)
-  const matchesAthleteSearch = (child: Child) => {
-    if (!isEditingLocked) return true
-    const haystack = `${child.vorname} ${child.nachname} ${child.jahrgang}`.toLowerCase()
-    return athleteSearchTerms.every(term => haystack.includes(term))
-  }
 
   const handleWithdrawalChange = useCallback(
     async (child: Child, withdrawn: boolean) => {
@@ -486,6 +509,8 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
     const hasTrainerErrors = Object.values(trainerValidation).some(err => err);
 
     if (hasTrainerErrors || !isChildrenValid) {
+      // Fehlerhafte Karten dürfen nicht durch die Suche ausgeblendet sein
+      if (!isChildrenValid) clearAthleteSearch();
       setBannerMessage('Bitte überprüfe alle Felder und korrigiere die Fehler.');
       setBannerVariant('error');
       return false;
@@ -628,6 +653,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
             setEmail('');
             setPhoneNumber('');
             setChildren([createEmptyChild()]);
+            clearAthleteSearch();
             setChildErrors({});
             setTrainerErrors({
               trainerName: false,
@@ -804,6 +830,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
             <ExcelTool
               disabled={isEditingLocked || isRegistrationLocked}
               onImport={(importedChildren) => {
+                clearAthleteSearch();
                 setChildren(prev => {
                   const nonEmpty = prev.filter(
                     c => c.vorname || c.nachname || c.jahrgang
@@ -821,7 +848,7 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
             />
 
 
-            {isEditingLocked && (
+            {(children.length > 1 || athleteSearch) && (
               <div className="athlete-search">
                 <FormField
                   id="athleteSearch"
@@ -830,16 +857,21 @@ function SignUpForm({ initialData, editToken, onSaveSuccess, seasonId, seasonYea
                   placeholder="Name oder Jahrgang"
                   value={athleteSearch}
                   required={false}
-                  onChange={(e) => setAthleteSearch(e.target.value)}
+                  onChange={(e) => updateAthleteSearch(e.target.value)}
                 />
+                {matchingChildIds !== null && (
+                  <p className="athlete-search-count">
+                    {children.filter(isChildVisible).length} von {children.length} Athlet/innen angezeigt
+                  </p>
+                )}
               </div>
             )}
 
-            {!children.some(matchesAthleteSearch) && (
+            {!children.some(isChildVisible) && (
               <p className="athlete-search-empty">Keine Athlet/innen gefunden.</p>
             )}
 
-            {children.map((child, index) => matchesAthleteSearch(child) && (
+            {children.map((child, index) => isChildVisible(child) && (
               <ChildCard
                 key={child.id}
                 child={child}

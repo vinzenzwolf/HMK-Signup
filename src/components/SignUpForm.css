@@ -150,6 +150,12 @@ section:first-of-type {
   margin-bottom: 1rem;
 }
 
+.athlete-search-count {
+  margin: 0.25rem 0 0;
+  color: #475569;
+  font-size: 0.8125rem;
+}
+
 .athlete-search-empty {
   margin: 1rem 0;
   color: #475569;
